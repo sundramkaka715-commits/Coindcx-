@@ -1,0 +1,15 @@
+*{box-sizing:border-box}body{margin:0;background:#0d1016;color:#f4f6f8;font-family:Arial,sans-serif}
+header{position:sticky;top:0;z-index:5;padding:14px 16px;background:#151923;border-bottom:1px solid #252b36}
+h1{font-size:21px;margin:0 0 5px}small{color:#9ba5b3}main{max-width:900px;margin:auto;padding:12px}
+.controls{display:flex;gap:8px;margin-bottom:10px}.controls select,.controls button,.chartHead button{background:#1a202b;color:#fff;border:1px solid #303746;border-radius:9px;padding:10px 13px}
+.controls button{background:#2868e8;border:0}.legend{background:#151923;padding:11px;border-radius:10px;margin-bottom:10px;color:#aeb7c4;font-size:13px}
+.row{display:grid;grid-template-columns:42px 1fr auto auto;gap:8px;align-items:center;background:#151923;border:1px solid #202633;border-radius:10px;margin:7px 0;padding:11px;cursor:pointer}
+.row:active{transform:scale(.99)}.rank{color:#7e8999}.symbol{font-weight:700}.price{color:#9da8b8;font-size:13px}.up{color:#2fe084}.down{color:#ff667a}
+.badge{font-size:11px;font-weight:bold;padding:5px 7px;border-radius:7px}.bull{background:#123d2b;color:#45e08c}.bear{background:#421d25;color:#ff7b8c}
+.card{margin-top:14px;background:#151923;border-radius:12px;padding:12px}.hidden{display:none}
+.chartHead{display:flex;justify-content:space-between;align-items:center}.chartHead h2{font-size:18px;margin:4px 0 10px}.chartHead button{font-size:22px;padding:2px 10px}.signal{text-align:center;font-weight:bold;padding:8px;margin-bottom:8px;border-radius:8px;background:#1c222d}
+canvas{background:#10131a;border-radius:8px;margin:7px 0}
+@media(max-width:560px){.row{grid-template-columns:28px 1fr auto}.price{display:none}.row .badge{grid-column:2/4;justify-self:start}}
+
+.divCard{background:#151923;border:1px solid #303746;border-radius:12px;padding:12px;margin-bottom:10px}.divTitle{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}.divTitle small{color:#9ba5b3}.divRow{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:9px;border-top:1px solid #252b36}.divRow small{color:#8f99a8}.none{color:#8f99a8;padding:8px 0}.bullText{color:#45e08c;font-weight:bold}.bearText{color:#ff7b8c;font-weight:bold}
+@media(max-width:560px){.divRow{grid-template-columns:1fr auto}.divRow small{grid-column:1/3}}
