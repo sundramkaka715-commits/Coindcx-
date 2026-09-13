@@ -1,0 +1,19 @@
+COINDCX FUTURES SCANNER V6
+
+Main list:
+- 15m movement is shown, not 24h percentage.
+- The latest real price movement goes to #1, even if it is tiny.
+- No minimum tick threshold.
+- Only coins with 15m movement are RSI candidates.
+
+RSI:
+- 1m RSI or 3m RSI.
+- Regular divergence only.
+- Pivot is confirmed by 3 candles on both sides.
+- Price difference >= 0.1% and RSI difference >= 2 points.
+- No signal is shown unless all conditions are met.
+
+Deploy:
+Build: npm install
+Start: npm start
+Use a Render Web Service.

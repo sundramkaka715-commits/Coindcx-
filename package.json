@@ -1,1 +1,7 @@
-{"scripts":{"start":"node server.js"},"dependencies":{"axios":"^1.7.9","express":"^4.21.2","socket.io":"^4.8.1","socket.io-client":"^4.8.1"}}
+{
+  "name":"coindcx-futures-scanner-v6",
+  "version":"1.0.0",
+  "private":true,
+  "scripts":{"start":"node server.js"},
+  "dependencies":{"axios":"^1.7.9","express":"^4.21.2","socket.io":"^4.8.1","socket.io-client":"^4.8.1"}
+}
