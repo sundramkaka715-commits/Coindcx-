@@ -8,7 +8,8 @@
 <title>CoinDCX Futures Scanner</title>
 <link rel="stylesheet" href="/style.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="/app.js" defer></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/app.js?v=7" defer></script>
 </head>
 <body>
 <header>
@@ -32,6 +33,7 @@
   <section class="divCard"><div class="divTitle"><b>📡 Confirmed RSI Divergence</b><small id="scanStatus">Scan शुरू हो रहा है…</small></div><div id="divergenceList"><div class="none">Scan शुरू हो रहा है…</div></div></section>
 
   <section class="legend">
+    <b>⚡ Live Move</b> = सबसे हाल का real price movement; movement होते ही coin #1. &nbsp;
     <b>% Move</b> = CoinDCX Futures का price-change %. &nbsp;
     <b>DIV</b> = RSI divergence.
   </section>

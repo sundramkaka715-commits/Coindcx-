@@ -13,3 +13,4 @@ canvas{background:#10131a;border-radius:8px;margin:7px 0}
 
 .divCard{background:#151923;border:1px solid #303746;border-radius:12px;padding:12px;margin-bottom:10px}.divTitle{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}.divTitle small{color:#9ba5b3}.divRow{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:9px;border-top:1px solid #252b36}.divRow small{color:#8f99a8}.none{color:#8f99a8;padding:8px 0}.bullText{color:#45e08c;font-weight:bold}.bearText{color:#ff7b8c;font-weight:bold}
 @media(max-width:560px){.divRow{grid-template-columns:1fr auto}.divRow small{grid-column:1/3}}
+.liveMove{display:block;font-size:10px;opacity:.9;margin-left:auto;margin-right:8px;white-space:nowrap}
