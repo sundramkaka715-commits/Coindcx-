@@ -1,4 +1,13 @@
+# CoinDCX Fakeout + Daily Liquidity Scanner
 
+No RSI divergence.
 
-V3: Strict confirmed RSI divergence now carries the confirmed pivot index so the chart can mark the exact divergence candle. No marker is shown when detection returns null. The detector remains closed-candle/pivot based.
-\n\nV5: Confirmed divergence coins are pinned to the top of the main Futures list. Each divergence row also shows the coin's current price-change percentage, and clicking either list opens its chart. No confirmed divergence = no DIV badge.\n
+Fakeout mappings:
+- 15M -> 1M
+- 30M -> 1M
+- 1H -> 5M
+- 4H -> 15M
+
+Also includes Daily Liquidity Sweep and XAU-USDT Gold.
+
+Run: npm install && npm start
