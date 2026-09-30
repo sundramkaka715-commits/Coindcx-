@@ -1,19 +1,16 @@
-# CoinDCX RSI Divergence Scanner
+# Confirmed CoinDCX RSI Divergence Scanner v2
 
-## What it detects
-- 1 minute, 5 minute and 15 minute candles
-- Regular bullish RSI divergence: price lower-low + RSI higher-low
-- Regular bearish RSI divergence: price higher-high + RSI lower-high
-- The two confirmed swing pivots must be 15–20 candles apart
-- RSI period = 14
-- Signal appears after the second pivot is confirmed (2 candles to the right)
+Only RSI divergence. No fakeout or liquidity scanner.
 
-## Replit
-1. Create a new Node.js Repl.
-2. Upload `package.json`, `server.js`, and the whole `public` folder.
-3. Run the project.
-4. Open the generated web link. It can be opened on phone and laptop.
+- 1m / 5m / 15m
+- RSI 14
+- 15–20 candle pivot gap
+- Bullish: price LL + RSI HL
+- Bearish: price HH + RSI LH
+- Second pivot confirmed with 2 candles to the right
+- CoinDCX USDT markets
+- Node 18+ required
 
-## Important
-This is a scanner, not an auto-trading bot. It does not place orders.
-The CoinDCX public candle API is used through the server so the browser does not need an API key.
+Render:
+Build command: npm install
+Start command: npm start

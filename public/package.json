@@ -1,9 +1,8 @@
 {
   "name": "coindcx-rsi-divergence-scanner",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "CoinDCX RSI divergence scanner for 1m, 5m and 15m USDT markets.",
-  "main": "server.js",
-  "scripts": { "start": "node server.js" },
-  "dependencies": { "express": "^4.21.2" }
+  "engines": {"node": ">=18"},
+  "scripts": {"start": "node server.js"},
+  "dependencies": {"express": "^4.21.2"}
 }

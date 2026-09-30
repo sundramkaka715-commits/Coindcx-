@@ -1,89 +1,21 @@
 <!doctype html>
 <html lang="hi">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>CoinDCX RSI Divergence Scanner</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CoinDCX Confirmed RSI Divergence</title><link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <div>
-      <h1>RSI Divergence Scanner</h1>
-      <p>CoinDCX • 1m / 5m / 15m • 15–20 candle pivot gap</p>
-    </div>
-    <div class="status" id="status">Starting…</div>
-  </header>
-
-  <section class="controls">
-    <label>Timeframe
-      <select id="tf">
-        <option value="1m">1 Minute</option>
-        <option value="5m">5 Minute</option>
-        <option value="15m">15 Minute</option>
-        <option value="all" selected>All 3</option>
-      </select>
-    </label>
-    <label>Pivot gap
-      <select id="gap">
-        <option value="15">15–15</option>
-        <option value="16">15–16</option>
-        <option value="17">15–17</option>
-        <option value="18">15–18</option>
-        <option value="19">15–19</option>
-        <option value="20" selected>15–20</option>
-      </select>
-    </label>
-    <label>Markets
-      <select id="marketLimit">
-        <option value="50">Top 50</option>
-        <option value="100" selected>Top 100</option>
-        <option value="250">Top 250</option>
-        <option value="all">All USDT</option>
-      </select>
-    </label>
-    <label>Refresh
-      <select id="refresh">
-        <option value="30000">30 sec</option>
-        <option value="60000" selected>60 sec</option>
-        <option value="120000">2 min</option>
-      </select>
-    </label>
-    <button id="scanBtn">Scan now</button>
-  </section>
-
-  <section class="cards">
-    <div class="card"><b id="total">0</b><span>Signals</span></div>
-    <div class="card"><b id="bull">0</b><span>Bullish</span></div>
-    <div class="card"><b id="bear">0</b><span>Bearish</span></div>
-    <div class="card"><b id="coins">0</b><span>Markets</span></div>
-  </section>
-
-  <main>
-    <div class="notice">
-      <b>Logic:</b> confirmed swing-pivot comparison. Bullish = price lower-low + RSI higher-low.
-      Bearish = price higher-high + RSI lower-high. The two pivots must be 15–20 candles apart.
-      Signal is shown only after the second pivot is confirmed.
-    </div>
-    <div class="tableWrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Coin</th><th>TF</th><th>Signal</th><th>Price pivot</th><th>RSI pivot</th>
-            <th>Gap</th><th>Time</th>
-          </tr>
-        </thead>
-        <tbody id="rows">
-          <tr><td colspan="7" class="empty">Scan शुरू हो रहा है…</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </main>
-
-  <footer>
-    <span>RSI period: 14</span>
-    <span id="updated">—</span>
-  </footer>
-  <script src="app.js"></script>
-</body>
-</html>
+<header><div><h1>Confirmed RSI Divergence Scanner</h1><p>CoinDCX • 1m / 5m / 15m • 15–20 candle gap</p></div><div id="status">Connecting…</div></header>
+<section class="controls">
+<label>Timeframe<select id="tf"><option value="all">All</option><option value="1m">1 Minute</option><option value="5m">5 Minute</option><option value="15m">15 Minute</option></select></label>
+<label>Pivot gap<select id="gap"><option value="20" selected>15–20</option><option value="18">15–18</option><option value="16">15–16</option></select></label>
+<label>Markets<select id="marketLimit"><option value="50">Top 50</option><option value="100" selected>Top 100</option><option value="250">Top 250</option><option value="all">All USDT</option></select></label>
+<label>Refresh<select id="refresh"><option value="30000">30 sec</option><option value="60000" selected>60 sec</option><option value="120000">2 min</option></select></label>
+<button id="scanBtn">Scan now</button>
+</section>
+<section class="cards"><div class="card"><b id="total">0</b><span>Signals</span></div><div class="card"><b id="bull">0</b><span>Bullish</span></div><div class="card"><b id="bear">0</b><span>Bearish</span></div><div class="card"><b id="coins">0</b><span>Markets</span></div></section>
+<main><div class="notice"><b>Confirmed only:</b> RSI 14. Bullish = price lower-low + RSI higher-low. Bearish = price higher-high + RSI lower-high. Two swing pivots must be 15–20 candles apart. The second pivot must have two candles on its right before the signal appears.</div>
+<div class="tableWrap"><table><thead><tr><th>Coin</th><th>TF</th><th>Signal</th><th>Price</th><th>RSI</th><th>Gap</th><th>Time</th></tr></thead><tbody id="rows"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody></table></div></main>
+<footer><span>RSI period 14 • No fakeout scanner</span><span id="updated">—</span></footer>
+<script src="app.js"></script>
+</body></html>
