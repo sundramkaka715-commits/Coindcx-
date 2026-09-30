@@ -1,16 +1,24 @@
-# Confirmed CoinDCX RSI Divergence Scanner v2
+# CoinDCX Confirmed RSI Divergence Scanner V3
 
-Only RSI divergence. No fakeout or liquidity scanner.
+This version keeps the same interface but fixes the CoinDCX Spot API routing.
 
-- 1m / 5m / 15m
-- RSI 14
+## Features
+- CoinDCX active USDT spot markets
+- 1m, 5m, 15m scanner
+- RSI 14 regular bullish/bearish divergence
 - 15–20 candle pivot gap
-- Bullish: price LL + RSI HL
-- Bearish: price HH + RSI LH
-- Second pivot confirmed with 2 candles to the right
-- CoinDCX USDT markets
-- Node 18+ required
+- Confirmed pivot: two candles to the right
+- 5m candles are built from CoinDCX 1m candles
+- Same mobile/laptop responsive interface
+- No fakeout scanner and no liquidity sweep module
 
-Render:
-Build command: npm install
-Start command: npm start
+## Render
+Build Command:
+`npm install`
+
+Start Command:
+`npm start`
+
+Node 18+ recommended.
+
+Important: CoinDCX Spot REST candles are requested from `api.coindcx.com`. The 5m option is aggregated locally from 1m candles because the documented Spot candle intervals include 1m and 15m rather than a direct 5m endpoint.
