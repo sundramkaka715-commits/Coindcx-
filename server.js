@@ -1,12 +1,137 @@
-const express=require('express'),http=require('http'),path=require('path'),axios=require('axios');
-const {Server}=require('socket.io'); const {io:clientIO}=require('socket.io-client');
-const app=express(),server=http.createServer(app),io=new Server(server); app.use(express.static(path.join(__dirname,'public')));
-const store=new Map(); const CFG=[{h:15,c:1,label:'15M → 1M'},{h:30,c:1,label:'30M → 1M'},{h:60,c:5,label:'1H → 5M'},{h:240,c:15,label:'4H → 15M'}];
-const bucket=(ms,min)=>Math.floor(ms/60000/min)*min;
-function trade(s,p,ms){let m=store.get(s);if(!m)store.set(s,m=new Map());let k=bucket(ms,1),x=m.get(k)||{time:k,open:p,high:p,low:p,close:p};x.high=Math.max(x.high,p);x.low=Math.min(x.low,p);x.close=p;m.set(k,x);if(m.size>20000)m.delete(m.keys().next().value)}
-function agg(s,min,end){let m=store.get(s);if(!m)return null;let a=[];for(let i=end-min+1;i<=end;i++){let x=m.get(i);if(x)a.push(x)}if(!a.length)return null;return{time:bucket(end,min),open:a[0].open,high:Math.max(...a.map(x=>x.high)),low:Math.min(...a.map(x=>x.low)),close:a[a.length-1].close}}
-function fake(s,now){let out=[];for(let q of CFG){let cc=agg(s,q.c,now-1);if(!cc)continue;let ref=agg(s,q.h,cc.time-1);if(!ref)continue;if(cc.high>ref.high&&cc.close<ref.high)out.push({symbol:s,type:'FAKEOUT',direction:'BEARISH',timeframe:q.label,levelType:'HIGH',level:ref.high,confirmTime:(cc.time+q.c)*60000});if(cc.low<ref.low&&cc.close>ref.low)out.push({symbol:s,type:'FAKEOUT',direction:'BULLISH',timeframe:q.label,levelType:'LOW',level:ref.low,confirmTime:(cc.time+q.c)*60000})}return out}
-function daily(s,now){let d=1440,cur=bucket(now,d),p=agg(s,d,cur-1),b=agg(s,d,cur-d-1),out=[];if(!p||!b)return out;if(p.high>b.high&&p.close<b.high)out.push({symbol:s,type:'DAILY_SWEEP',direction:'BEARISH',levelType:'HIGH',level:b.high,confirmTime:(p.time+d)*60000});if(p.low<b.low&&p.close>b.low)out.push({symbol:s,type:'DAILY_SWEEP',direction:'BULLISH',levelType:'LOW',level:b.low,confirmTime:(p.time+d)*60000});return out}
-async function pairs(){try{let r=await axios.get('https://public.coindcx.com/market_data/v3/active_instruments/futures',{timeout:15000}),a=Array.isArray(r.data)?r.data:(r.data.instruments||[]);let p=a.map(x=>x.pair||x.symbol||x.market).filter(x=>/USDT$|INR$/i.test(x));if(!p.some(x=>x.toUpperCase()==='XAUUSDT'))p.push('XAUUSDT');return [...new Set(p)]}catch(e){return ['XAUUSDT']}}
-async function start(){let ps=await pairs(),ws=clientIO('https://stream.coindcx.com',{transports:['websocket']});ws.on('connect',()=>ps.forEach(p=>ws.emit('join',{channelName:p+'@trades-futures'})));ws.on('newTrade',m=>{let s=m.pair||m.symbol||m.market,p=Number(m.price||m.p||m.rate);if(s&&Number.isFinite(p)){trade(s,p,Date.now());io.emit('tick',{symbol:s,price:p,time:Date.now()})}})}
-setInterval(()=>{let n=Math.floor(Date.now()/60000);for(let s of store.keys()){let f=fake(s,n),d=daily(s,n);if(f.length||d.length)io.emit('signals',{fakeouts:f,sweeps:d})}},5000);app.get('/health',(_,r)=>r.json({ok:true}));server.listen(process.env.PORT||3000,start);
+const express = require("express");
+const https = require("https");
+const path = require("path");
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(express.static(path.join(__dirname, "public")));
+
+function getJSON(url) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 RSI-Divergence-Scanner",
+        "Accept": "application/json"
+      }
+    }, (res) => {
+      let body = "";
+      res.setEncoding("utf8");
+      res.on("data", chunk => body += chunk);
+      res.on("end", () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          return reject(new Error(`CoinDCX HTTP ${res.statusCode}`));
+        }
+        try {
+          resolve(JSON.parse(body));
+        } catch (e) {
+          reject(new Error(`Invalid CoinDCX JSON`));
+        }
+      });
+    });
+    req.setTimeout(15000, () => req.destroy(new Error("CoinDCX request timeout")));
+    req.on("error", reject);
+  });
+}
+
+function isUSDTMarket(x) {
+  const pair = String(x.pair || "").toUpperCase();
+  const name = String(x.coindcx_name || "").toUpperCase();
+  const symbol = String(x.symbol || "").toUpperCase();
+  const status = String(x.status || "active").toLowerCase();
+  if (status !== "active") return false;
+  return pair.endsWith("_USDT") || name.endsWith("USDT") || symbol.endsWith("USDT");
+}
+
+app.get("/api/health", (req, res) => {
+  res.json({ ok: true, service: "RSI Divergence Scanner V3" });
+});
+
+app.get("/api/markets", async (req, res) => {
+  try {
+    const data = await getJSON("https://api.coindcx.com/exchange/v1/markets_details");
+    const arr = Array.isArray(data) ? data : [];
+
+    const markets = arr
+      .filter(isUSDTMarket)
+      .map(x => {
+        const pair = x.pair || x.coindcx_name || x.symbol;
+        const symbol = x.coindcx_name || x.symbol || pair;
+        return {
+          symbol,
+          pair,
+          base: x.base_currency_short_name || "",
+          quote: "USDT"
+        };
+      })
+      .filter(x => x.symbol && x.pair);
+
+    if (!markets.length) throw new Error("CoinDCX returned no active USDT markets");
+    res.json(markets);
+  } catch (e) {
+    console.error("MARKETS ERROR", e);
+    res.status(502).json({ error: e.message });
+  }
+}
+
+function aggregate5m(raw) {
+  const c = [...raw]
+    .map(x => ({
+      open: Number(x.open), high: Number(x.high), low: Number(x.low),
+      close: Number(x.close), volume: Number(x.volume || 0), time: Number(x.time)
+    }))
+    .filter(x => Number.isFinite(x.time) && Number.isFinite(x.close))
+    .sort((a, b) => a.time - b.time);
+
+  const groups = new Map();
+  for (const x of c) {
+    const bucket = Math.floor(x.time / 300000) * 300000;
+    if (!groups.has(bucket)) groups.set(bucket, []);
+    groups.get(bucket).push(x);
+  }
+
+  return [...groups.entries()].map(([time, g]) => ({
+    open: g[0].open,
+    high: Math.max(...g.map(x => x.high)),
+    low: Math.min(...g.map(x => x.low)),
+    close: g[g.length - 1].close,
+    volume: g.reduce((s, x) => s + x.volume, 0),
+    time
+  })).sort((a, b) => a.time - b.time);
+}
+
+app.get("/api/candles", async (req, res) => {
+  try {
+    const pair = String(req.query.pair || "");
+    const interval = String(req.query.interval || "1m");
+    const limit = Math.min(Math.max(Number(req.query.limit || 100), 50), 500);
+
+    if (!pair || !["1m", "5m", "15m"].includes(interval)) {
+      return res.status(400).json({ error: "Invalid pair or interval" });
+    }
+
+    // CoinDCX Spot REST candles are served from api.coindcx.com.
+    // CoinDCX documents 1m and 15m; 5m is built locally from 1m candles.
+    const sourceInterval = interval === "5m" ? "1m" : interval;
+    const sourceLimit = interval === "5m" ? Math.min(500, Math.max(100, limit * 5 + 10)) : limit;
+
+    const url =
+      `https://api.coindcx.com/market_data/candles?pair=${encodeURIComponent(pair)}` +
+      `&interval=${sourceInterval}&limit=${sourceLimit}`;
+
+    const data = await getJSON(url);
+    const candles = Array.isArray(data) ? data : [];
+
+    if (interval === "5m") {
+      return res.json(aggregate5m(candles).slice(-limit));
+    }
+
+    res.json(candles.slice(0, limit));
+  } catch (e) {
+    console.error("CANDLE ERROR", e);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+app.get("*", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+app.listen(PORT, () => console.log(`RSI scanner V3 listening on ${PORT}`));
