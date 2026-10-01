@@ -1,82 +1,14 @@
-const $=id=>document.getElementById(id);
-let markets=[],busy=false,timer=null;
-const PERIOD=14;
-
-function calcRSI(values){
-  const out=Array(values.length).fill(null); if(values.length<=PERIOD)return out;
-  let gains=0,losses=0;
-  for(let i=1;i<=PERIOD;i++){const d=values[i]-values[i-1];gains+=Math.max(d,0);losses+=Math.max(-d,0);}
-  let avgGain=gains/PERIOD,avgLoss=losses/PERIOD;
-  out[PERIOD]=avgLoss===0?100:100-100/(1+avgGain/avgLoss);
-  for(let i=PERIOD+1;i<values.length;i++){const d=values[i]-values[i-1];avgGain=(avgGain*(PERIOD-1)+Math.max(d,0))/PERIOD;avgLoss=(avgLoss*(PERIOD-1)+Math.max(-d,0))/PERIOD;out[i]=avgLoss===0?100:100-100/(1+avgGain/avgLoss);}
-  return out;
-}
-
-function findPivots(values){
-  const lows=[],highs=[];
-  for(let i=1;i<values.length-1;i++){
-    if(values[i]<values[i-1]&&values[i]<=values[i+1])lows.push(i);
-    if(values[i]>values[i-1]&&values[i]>=values[i+1])highs.push(i);
-  }
-  return{lows,highs};
-}
-
-function detect(raw,minGap,maxGap){
-  const candles=[...raw].sort((a,b)=>Number(a.time)-Number(b.time));
-  if(candles.length<60)return null;
-  const closes=candles.map(x=>Number(x.close));
-  const lowsPrice=candles.map(x=>Number(x.low));
-  const highsPrice=candles.map(x=>Number(x.high));
-  const rsi=calcRSI(closes);
-  const lows=findPivots(lowsPrice).lows;
-  const highs=findPivots(highsPrice).highs;
-  const confirmedMax=candles.length-3;
-  const usableLows=lows.filter(i=>i<=confirmedMax&&rsi[i]!==null);
-  const usableHighs=highs.filter(i=>i<=confirmedMax&&rsi[i]!==null);
-
-  for(let b=usableLows.length-1;b>=0;b--){
-    const second=usableLows[b];
-    for(let a=b-1;a>=0;a--){
-      const first=usableLows[a],gap=second-first;
-      if(gap>maxGap)break;
-      if(gap>=minGap&&lowsPrice[second]<lowsPrice[first]&&rsi[second]>rsi[first])
-        return{side:'BULLISH',price:lowsPrice[second],rsi:rsi[second],gap,time:candles[second].time};
-    }
-  }
-  for(let b=usableHighs.length-1;b>=0;b--){
-    const second=usableHighs[b];
-    for(let a=b-1;a>=0;a--){
-      const first=usableHighs[a],gap=second-first;
-      if(gap>maxGap)break;
-      if(gap>=minGap&&highsPrice[second]>highsPrice[first]&&rsi[second]<rsi[first])
-        return{side:'BEARISH',price:highsPrice[second],rsi:rsi[second],gap,time:candles[second].time};
-    }
-  }
-  return null;
-}
-
-async function getJSON(url){const r=await fetch(url);const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'HTTP '+r.status);return d;}
-async function loadMarkets(){markets=await getJSON('/api/markets');$('coins').textContent=markets.length;}
-
-async function scan(){
-  if(busy)return; busy=true; $('scanBtn').disabled=true; $('status').textContent='Scanning…';
-  try{
-    if(!markets.length)await loadMarkets();
-    let selected=[...markets]; const lim=$('marketLimit').value; if(lim!=='all')selected=selected.slice(0,Number(lim));
-    const tfs=$('tf').value==='all'?['1m','5m','15m']:[$('tf').value];
-    const jobs=[]; for(const m of selected)for(const tf of tfs)jobs.push({m,tf});
-    let next=0;const out=[];const minGap=1,maxGap=20;
-    async function worker(){while(true){const i=next++;if(i>=jobs.length)return;const j=jobs[i];try{const candles=await getJSON('/api/candles?pair='+encodeURIComponent(j.m.pair)+'&interval='+j.tf);const signal=detect(candles,minGap,maxGap);if(signal)out.push({...signal,symbol:j.m.symbol,tf:j.tf});}catch(e){}}}
-    await Promise.all([worker(),worker(),worker(),worker(),worker(),worker()]);
-    out.sort((a,b)=>Number(b.time)-Number(a.time));render(out);$('status').textContent='Done • '+out.length+' confirmed signal(s)';$('updated').textContent='Updated '+new Date().toLocaleTimeString('en-IN');
-  }catch(e){$('status').textContent='Error: '+e.message;$('rows').innerHTML='<tr><td colspan="7" class="empty">'+e.message+'</td></tr>';}finally{busy=false;$('scanBtn').disabled=false;}
-}
-
-function render(signals){
-  $('total').textContent=signals.length;$('bull').textContent=signals.filter(x=>x.side==='BULLISH').length;$('bear').textContent=signals.filter(x=>x.side==='BEARISH').length;
-  if(!signals.length){$('rows').innerHTML='<tr><td colspan="7" class="empty">1–20 candle gap में confirmed RSI divergence नहीं मिला.</td></tr>';return;}
-  $('rows').innerHTML=signals.map(x=>'<tr><td><b>'+x.symbol+'</b></td><td>'+x.tf+'</td><td class="'+(x.side==='BULLISH'?'bull':'bear')+'">'+x.side+'</td><td>'+Number(x.price).toPrecision(8)+'</td><td>'+Number(x.rsi).toFixed(2)+'</td><td>'+x.gap+'</td><td>'+new Date(Number(x.time)).toLocaleString('en-IN',{hour12:false})+'</td></tr>').join('');
-}
-
-$('scanBtn').addEventListener('click',scan);$('refresh').addEventListener('change',()=>{clearInterval(timer);const m=Number($('refresh').value);if(m>0)timer=setInterval(scan,m);});$('tf').addEventListener('change',scan);$('marketLimit').addEventListener('change',scan);
-(async()=>{try{await loadMarkets();await scan();const m=Number($('refresh').value);if(m>0)timer=setInterval(scan,m);}catch(e){$('status').textContent='Error: '+e.message;}})();
+const $=id=>document.getElementById(id);let markets=[],busy=false,timer=null,autoTimer=null,usedSet=new Set();
+function calcRSI(v){const p=14,o=Array(v.length).fill(null);if(v.length<=p)return o;let g=0,l=0;for(let i=1;i<=p;i++){const d=v[i]-v[i-1];g+=Math.max(d,0);l+=Math.max(-d,0)}let ag=g/p,al=l/p;o[p]=al===0?100:100-100/(1+ag/al);for(let i=p+1;i<v.length;i++){const d=v[i]-v[i-1];ag=(ag*(p-1)+Math.max(d,0))/p;al=(al*(p-1)+Math.max(-d,0))/p;o[i]=al===0?100:100-100/(1+ag/al)}return o}
+function pivots(c){const lows=[],highs=[];for(let i=2;i<c.length-2;i++){if(c[i].low<c[i-1].low&&c[i].low<=c[i+1].low&&c[i].low<c[i-2].low&&c[i].low<=c[i+2].low)lows.push(i);if(c[i].high>c[i-1].high&&c[i].high>=c[i+1].high&&c[i].high>c[i-2].high&&c[i].high>=c[i+2].high)highs.push(i)}return{lows,highs}}
+function detect(c){if(c.length<70)return null;const r=calcRSI(c.map(x=>x.close)),p=pivots(c),last=c.length-3;for(let b=p.lows.length-1;b>=0;b--){const s=p.lows[b];if(s>last||r[s]==null)continue;for(let a=b-1;a>=0;a--){const f=p.lows[a],gap=s-f;if(gap>18)break;if(gap>=1&&c[s].low<c[f].low&&r[s]>r[f])return{side:'BULLISH',pivotIndex:s,pivotTime:c[s].time,pivotPrice:c[s].low,rsi:r[s],gap}}}for(let b=p.highs.length-1;b>=0;b--){const s=p.highs[b];if(s>last||r[s]==null)continue;for(let a=b-1;a>=0;a--){const f=p.highs[a],gap=s-f;if(gap>18)break;if(gap>=1&&c[s].high>c[f].high&&r[s]<r[f])return{side:'BEARISH',pivotIndex:s,pivotTime:c[s].time,pivotPrice:c[s].high,rsi:r[s],gap}}}return null}
+function setup(c){const d=detect(c);if(!d)return null;const p=pivots(c),last=c.length-2;let swings,level,sl;if(d.side==='BULLISH'){swings=p.highs.filter(i=>i>d.pivotIndex&&i<=last);if(!swings.length)return null;const i=swings[swings.length-1];level=c[i].high;if(c[last].close<=level)return null;const lows=p.lows.filter(i=>i<=d.pivotIndex);if(!lows.length)return null;sl=c[lows[lows.length-1]].low}else{swings=p.lows.filter(i=>i>d.pivotIndex&&i<=last);if(!swings.length)return null;const i=swings[swings.length-1];level=c[i].low;if(c[last].close>=level)return null;const highs=p.highs.filter(i=>i<=d.pivotIndex);if(!highs.length)return null;sl=c[highs[highs.length-1]].high}const entry=c[last].close,riskDistance=Math.abs(entry-sl);if(!riskDistance)return null;const target=d.side==='BULLISH'?entry+riskDistance*Number($('rr').value):entry-riskDistance*Number($('rr').value);return{...d,entry,sl,target,swingLevel:level,breakTime:c[last].time,key:`${d.side}:${d.pivotTime}:${level}:${c[last].time}`}}
+async function getJSON(url,opt){const r=await fetch(url,opt);const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'HTTP '+r.status);return d}
+async function loadMarkets(){markets=await getJSON('/api/markets');$('coins').textContent=markets.length}
+async function candles(m,tf){return getJSON('/api/candles?pair='+encodeURIComponent(m.pair)+'&interval='+tf)}
+async function scan(){if(busy)return;busy=true;$('scanBtn').disabled=true;$('status').textContent='Scanning…';try{if(!markets.length)await loadMarkets();let selected=[...markets],lim=$('marketLimit').value;if(lim!=='all')selected=selected.slice(0,Number(lim));const tfv=$('tf').value,tfs=tfv==='all'?['1m','5m','15m']:[tfv],jobs=[];for(const m of selected)for(const tf of tfs)jobs.push({m,tf});let next=0,out=[];async function worker(){while(true){const i=next++;if(i>=jobs.length)return;const j=jobs[i];try{const c=await candles(j.m,j.tf),s=setup(c);if(s&&($('direction').value==='BOTH'||$('direction').value===s.side))out.push({...s,symbol:j.m.symbol,pair:j.m.pair,tf:j.tf})}catch(e){}}}await Promise.all(Array.from({length:6},worker));out.sort((a,b)=>b.breakTime-a.breakTime);render(out);$('status').textContent='Done • '+out.length+' confirmed setup(s)';$('updated').textContent='Updated '+new Date().toLocaleTimeString('en-IN',{hour12:false});if($('autoEnabled').checked)await autoTrade(out)}catch(e){$('status').textContent='Error: '+e.message}finally{busy=false;$('scanBtn').disabled=false}}
+function render(a){$('total').textContent=a.length;$('bull').textContent=a.filter(x=>x.side==='BULLISH').length;$('bear').textContent=a.filter(x=>x.side==='BEARISH').length;if(!a.length){$('rows').innerHTML='<tr><td colspan="8" class="empty">1–20 candle divergence + swing break नहीं मिला.</td></tr>';return}$('rows').innerHTML=a.map(x=>`<tr><td><b>${x.symbol}</b></td><td>${x.tf}</td><td class="${x.side==='BULLISH'?'bull':'bear'}">${x.side}</td><td>${fmt(x.entry)}</td><td>${fmt(x.sl)}</td><td>${fmt(x.target)}</td><td>${x.gap}</td><td>${fmt(x.swingLevel)}</td></tr>`).join('')}
+function fmt(n){return Number(n).toPrecision(8)}
+async function autoTrade(setups){if(!$('autoEnabled').checked)return;const live=$('mode').value==='live';if(live&&!confirm('LIVE Auto Trade enabled. CoinDCX orders can use real funds. Continue?')){ $('autoEnabled').checked=false;return }for(const s of setups){if(s.tf!=='1m'||usedSet.has(s.key))continue;usedSet.add(s.key);try{const rate=(await getJSON('/api/usdt-inr')).price;const riskINR=Number($('risk').value)||20;const riskUSDT=riskINR/rate;const qty=riskUSDT/Math.abs(s.entry-s.sl);const precision=8;const q=Math.floor(qty*10**precision)/10**precision;if(q<=0)throw new Error('Quantity too small');const res=await getJSON('/api/auto-trade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pair:s.pair,side:s.side,entry:s.entry,sl:s.sl,target:s.target,quantity:q,leverage:Number($('leverage').value)||1,paper:!live})});logTrade(s,res,q,rate,riskINR)}catch(e){logTrade(s,{error:e.message},0,0,Number($('risk').value)||20)}}}
+function logTrade(s,res,q,rate,risk){const box=$('tradeLog');const line=document.createElement('div');line.innerHTML=`<b class="${s.side==='BULLISH'?'bull':'bear'}">${s.side}</b> ${s.symbol} • Entry ${fmt(s.entry)} • SL ${fmt(s.sl)} • TP ${fmt(s.target)} • Qty ${q} • Risk ₹${risk} ${res.mode?('• '+res.mode):'• ERROR '+res.error}`;if(box.textContent==='No trades yet.')box.textContent='';box.appendChild(line)}
+$('scanBtn').onclick=scan;$('tf').onchange=scan;$('marketLimit').onchange=scan;$('direction').onchange=scan;$('rr').onchange=scan;$('refresh').onchange=()=>{clearInterval(timer);const m=Number($('refresh').value);if(m)timer=setInterval(scan,m)};$('autoEnabled').onchange=()=>{clearInterval(autoTimer);if($('autoEnabled').checked){scan();autoTimer=setInterval(scan,30000)}};$('stopBtn').onclick=()=>{$('autoEnabled').checked=false;clearInterval(autoTimer);$('status').textContent='Auto Trade stopped.'};$('mode').onchange=()=>{if($('mode').value==='live')alert('LIVE mode requires CoinDCX API key/secret in Render Environment Variables. Never paste secrets into this webpage.')};(async()=>{try{await loadMarkets();await scan();const m=Number($('refresh').value);if(m)timer=setInterval(scan,m)}catch(e){$('status').textContent='Error: '+e.message}})();
