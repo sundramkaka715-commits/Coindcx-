@@ -1,9 +1,1 @@
-{
-  "name":"CoinDCX Futures RSI Scanner",
-  "short_name":"Futures Scanner",
-  "start_url":"/",
-  "display":"standalone",
-  "background_color":"#0d1016",
-  "theme_color":"#151923",
-  "icons":[]
-}
+{"name":"CoinDCX Futures Scanner","short_name":"Futures Scanner","start_url":"/","display":"standalone","background_color":"#0d1016","theme_color":"#151923","icons":[]}
