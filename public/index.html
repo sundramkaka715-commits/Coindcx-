@@ -1,1 +1,22 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confirmed RSI Divergence Scanner</title><link rel="stylesheet" href="/style.css"></head><body><main class="wrap"><h1>Confirmed RSI Divergence Scanner</h1><p class="sub">CoinDCX • Top 15m movers → 1m RSI divergence • 1–18 candle gap</p><div id="status" class="status">Loading…</div><section class="controls"><label>RSI timeframe<select disabled><option>1 Minute</option></select></label><label>Top movers<select id="topCount"><option value="20" selected>Top 20</option><option value="25">Top 25</option></select></label><label>Markets to check<select id="marketLimit"><option value="100">Top 100 markets</option><option value="250" selected>Top 250 markets</option><option value="all">All markets</option></select></label><label>Refresh<select id="refresh"><option value="60000">1 min</option><option value="120000" selected>2 min</option><option value="300000">5 min</option><option value="0">Off</option></select></label><button id="scanBtn">Scan now</button></section><section class="cards"><div class="card"><strong id="total">0</strong><span>Signals</span></div><div class="card"><strong id="bull">0</strong><span>Bullish</span></div><div class="card"><strong id="bear">0</strong><span>Bearish</span></div><div class="card"><strong id="coins">0</strong><span>Markets</span></div></section><section class="note"><b>Confirmed only:</b> RSI 14. Bullish = price lower-low + RSI higher-low. Bearish = price higher-high + RSI lower-high. Two swing pivots can be 1–20 candles apart. The second pivot is confirmed after 2 candles close.</section><section class="tableWrap"><table><thead><tr><th>Coin</th><th>TF</th><th>Signal</th><th>Price</th><th>RSI</th><th>Gap</th><th>Time</th></tr></thead><tbody id="rows"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody></table></section><div id="updated" class="updated"></div></main><script src="/app.js"></script></body></html>
+<!doctype html>
+<html lang="hi"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#10131a"><link rel="manifest" href="/manifest.json">
+<title>CoinDCX Futures Scanner</title>
+<link rel="stylesheet" href="/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/app.js" defer></script>
+</head>
+<body><header><div><h1>🔥 CoinDCX Futures Scanner</h1><small id="status">Connecting…</small></div></header>
+<main>
+<section class="controls">
+<select id="resolution"><option value="1" selected>1m RSI</option><option value="3">3m RSI</option><option value="5">5m RSI</option></select>
+<button id="refresh">Refresh</button>
+</section>
+<section class="divCard"><div class="divTitle"><b>📡 Confirmed RSI Divergence</b><small id="scanStatus">15m movers scan शुरू हो रहा है…</small></div>
+<div id="divergenceList"><div class="none">Scan शुरू हो रहा है…</div></div></section>
+<section class="legend"><b>15m Move</b> = पिछले 15 मिनट का movement. <b>DIV</b> = केवल confirmed RSI divergence.</section>
+<section id="list"></section>
+<section id="chartBox" class="card hidden"><div class="chartHead"><h2 id="title">Chart</h2><button id="close">×</button></div>
+<div id="signal" class="signal">Loading…</div><canvas id="priceChart"></canvas><canvas id="rsiChart"></canvas></section>
+</main></body></html>
