@@ -1,137 +1,134 @@
+
 const express = require("express");
-const https = require("https");
-const path = require("path");
+const http = require("http");
+const { Server } = require("socket.io");
+const { io: coinIO } = require("socket.io-client");
+const axios = require("axios");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const server = http.createServer(app);
+const io = new Server(server);
+app.use(express.static("public"));
 
-app.use(express.static(path.join(__dirname, "public")));
+let count = 0;
+let subscribed = false;
+const old = new Map();
+const history = new Map(); // symbol -> [{t,p}, ...]
 
-function getJSON(url) {
-  return new Promise((resolve, reject) => {
-    const req = https.get(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 RSI-Divergence-Scanner",
-        "Accept": "application/json"
-      }
-    }, (res) => {
-      let body = "";
-      res.setEncoding("utf8");
-      res.on("data", chunk => body += chunk);
-      res.on("end", () => {
-        if (res.statusCode < 200 || res.statusCode >= 300) {
-          return reject(new Error(`CoinDCX HTTP ${res.statusCode}`));
-        }
-        try {
-          resolve(JSON.parse(body));
-        } catch (e) {
-          reject(new Error(`Invalid CoinDCX JSON`));
-        }
-      });
-    });
-    req.setTimeout(15000, () => req.destroy(new Error("CoinDCX request timeout")));
-    req.on("error", reject);
-  });
+async function getCurrentPrices() {
+  const r = await axios.get("https://public.coindcx.com/market_data/v3/current_prices/futures/rt", { timeout: 15000 });
+  return r.data;
 }
 
-function isUSDTMarket(x) {
-  const pair = String(x.pair || "").toUpperCase();
-  const name = String(x.coindcx_name || "").toUpperCase();
-  const symbol = String(x.symbol || "").toUpperCase();
-  const status = String(x.status || "active").toLowerCase();
-  if (status !== "active") return false;
-  return pair.endsWith("_USDT") || name.endsWith("USDT") || symbol.endsWith("USDT");
-}
-
-app.get("/api/health", (req, res) => {
-  res.json({ ok: true, service: "RSI Divergence Scanner V3" });
-});
-
-app.get("/api/markets", async (req, res) => {
+async function getPairs() {
   try {
-    const data = await getJSON("https://api.coindcx.com/exchange/v1/markets_details");
-    const arr = Array.isArray(data) ? data : [];
+    const j = await getCurrentPrices();
+    const prices = j && j.prices ? j.prices : {};
+    const pairs = Object.keys(prices).filter(Boolean);
+    if (pairs.length) return pairs;
+  } catch (e) { console.log("current prices error:", e.message); }
 
-    const markets = arr
-      .filter(isUSDTMarket)
-      .map(x => {
-        const pair = x.pair || x.coindcx_name || x.symbol;
-        const symbol = x.coindcx_name || x.symbol || pair;
-        return {
-          symbol,
-          pair,
-          base: x.base_currency_short_name || "",
-          quote: "USDT"
-        };
-      })
-      .filter(x => x.symbol && x.pair);
-
-    if (!markets.length) throw new Error("CoinDCX returned no active USDT markets");
-    res.json(markets);
-  } catch (e) {
-    console.error("MARKETS ERROR", e);
-    res.status(502).json({ error: e.message });
+  const out = [];
+  for (const c of ["USDT", "INR"]) {
+    try {
+      const r = await axios.get(
+        "https://api.coindcx.com/exchange/v1/derivatives/futures/data/active_instruments",
+        { params: { "margin_currency_short_name[]": c }, timeout: 15000 }
+      );
+      if (Array.isArray(r.data)) out.push(...r.data.map(x => typeof x === "string" ? x : (x.instrument_name || x.pair || x.symbol)));
+    } catch (e) { console.log("instrument error:", e.message); }
   }
+  return [...new Set(out.filter(Boolean))];
 }
 
-function aggregate5m(raw) {
-  const c = [...raw]
-    .map(x => ({
-      open: Number(x.open), high: Number(x.high), low: Number(x.low),
-      close: Number(x.close), volume: Number(x.volume || 0), time: Number(x.time)
-    }))
-    .filter(x => Number.isFinite(x.time) && Number.isFinite(x.close))
-    .sort((a, b) => a.time - b.time);
-
-  const groups = new Map();
-  for (const x of c) {
-    const bucket = Math.floor(x.time / 300000) * 300000;
-    if (!groups.has(bucket)) groups.set(bucket, []);
-    groups.get(bucket).push(x);
-  }
-
-  return [...groups.entries()].map(([time, g]) => ({
-    open: g[0].open,
-    high: Math.max(...g.map(x => x.high)),
-    low: Math.min(...g.map(x => x.low)),
-    close: g[g.length - 1].close,
-    volume: g.reduce((s, x) => s + x.volume, 0),
-    time
-  })).sort((a, b) => a.time - b.time);
-}
+app.get("/api/prices", async (req, res) => {
+  try { res.json(await getCurrentPrices()); }
+  catch (e) { res.status(502).json({ error: e.message }); }
+});
 
 app.get("/api/candles", async (req, res) => {
-  try {
-    const pair = String(req.query.pair || "");
-    const interval = String(req.query.interval || "1m");
-    const limit = Math.min(Math.max(Number(req.query.limit || 100), 50), 500);
-
-    if (!pair || !["1m", "5m", "15m"].includes(interval)) {
-      return res.status(400).json({ error: "Invalid pair or interval" });
-    }
-
-    // CoinDCX Spot REST candles are served from api.coindcx.com.
-    // CoinDCX documents 1m and 15m; 5m is built locally from 1m candles.
-    const sourceInterval = interval === "5m" ? "1m" : interval;
-    const sourceLimit = interval === "5m" ? Math.min(500, Math.max(100, limit * 5 + 10)) : limit;
-
-    const url =
-      `https://api.coindcx.com/market_data/candles?pair=${encodeURIComponent(pair)}` +
-      `&interval=${sourceInterval}&limit=${sourceLimit}`;
-
-    const data = await getJSON(url);
-    const candles = Array.isArray(data) ? data : [];
-
-    if (interval === "5m") {
-      return res.json(aggregate5m(candles).slice(-limit));
-    }
-
-    res.json(candles.slice(0, limit));
-  } catch (e) {
-    console.error("CANDLE ERROR", e);
-    res.status(502).json({ error: e.message });
+  const pair = String(req.query.pair || "");
+  const resolution = String(req.query.resolution || "5");
+  if (!pair || !new Set(["1", "5", "60", "1D"]).has(resolution)) {
+    return res.status(400).json({ error: "Invalid pair/resolution" });
   }
+  const now = Math.floor(Date.now() / 1000);
+  const from = now - (resolution === "1" ? 2 * 3600 : resolution === "5" ? 12 * 3600 : resolution === "60" ? 7 * 86400 : 90 * 86400);
+  try {
+    const r = await axios.get("https://public.coindcx.com/market_data/candlesticks", {
+      params: { pair, from, to: now, resolution, pcode: "f" }, timeout: 15000
+    });
+    res.json(r.data);
+  } catch (e) { res.status(502).json({ error: e.message }); }
 });
 
-app.get("*", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
-app.listen(PORT, () => console.log(`RSI scanner V3 listening on ${PORT}`));
+// 15-minute movement from the live Futures WebSocket.
+// Any price change counts; no minimum movement threshold.
+app.get("/api/movers15", (req, res) => {
+  const now = Date.now();
+  const out = {};
+  for (const [symbol, arr] of history.entries()) {
+    while (arr.length && arr[0].t < now - 16 * 60 * 1000) arr.shift();
+    if (!arr.length) continue;
+    const ref = arr.find(x => x.t <= now - 15 * 60 * 1000);
+    const latest = arr[arr.length - 1];
+    if (!ref || !latest || !Number.isFinite(ref.p) || !Number.isFinite(latest.p) || ref.p <= 0) continue;
+    out[symbol] = {
+      move15: (latest.p - ref.p) / ref.p * 100,
+      movedAt: latest.t,
+      price: latest.p
+    };
+  }
+  res.json({ movers: out, ready: Object.keys(out).length > 0 });
+});
+
+(async () => {
+  const pairs = await getPairs();
+  count = pairs.length;
+  console.log("Futures:", count);
+
+  const s = coinIO("https://stream.coindcx.com", { transports: ["websocket"], reconnection: true });
+
+  s.on("connect", () => {
+    console.log("CoinDCX stream connected");
+    pairs.forEach(p => s.emit("join", { channelName: p + "@prices-futures" }));
+    subscribed = true;
+    io.emit("status", { ok: true, count });
+  });
+
+  s.on("disconnect", () => {
+    subscribed = false;
+    io.emit("status", { ok: false, count });
+  });
+
+  s.on("price-change", r => {
+    const d = r && r.data || r || {};
+    const symbol = d.s || d.pair || d.symbol;
+    const price = Number(d.p ?? d.price);
+    if (!symbol || !Number.isFinite(price) || price <= 0) return;
+
+    const now = Date.now();
+    let arr = history.get(symbol);
+    if (!arr) { arr = []; history.set(symbol, arr); }
+    arr.push({ t: now, p: price });
+    while (arr.length && arr[0].t < now - 16 * 60 * 1000) arr.shift();
+
+    const previous = old.get(symbol);
+    old.set(symbol, price);
+
+    if (previous !== undefined && price !== previous) {
+      const tickPct = (price - previous) / previous * 100;
+      io.emit("tick", {
+        symbol, price, previous, tickPct,
+        dir: tickPct > 0 ? "UP" : "DOWN",
+        movedAt: now, ts: now
+      });
+    }
+  });
+})().catch(e => console.error("startup error:", e));
+
+app.get("/health", (req, res) => res.json({ ok: true, futures: count, subscribed }));
+app.get("/", (req, res) => res.sendFile(require("path").join(__dirname, "public", "index.html")));
+
+const port = Number(process.env.PORT || 10000);
+server.listen(port, "0.0.0.0", () => console.log("Server started on", port));
