@@ -1,1 +1,117 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1H High/Low Rejection & Reclaim Scanner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>1H High / Low Rejection & Reclaim Scanner</h1>
+      <p>5m या 10m candle 1H High/Low को पार करके वापस अंदर close करे तो signal</p>
+    </div>
+    <div class="status-wrap">
+      <span id="statusDot" class="dot"></span>
+      <span id="statusText">Ready</span>
+    </div>
+  </header>
 
+  <main class="container">
+    <section class="controls card">
+      <div class="control">
+        <label for="scanTf">Scan Candle</label>
+        <select id="scanTf">
+          <option value="5m">5 Minutes</option>
+          <option value="10m">10 Minutes</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label for="market">Market</label>
+        <select id="market">
+          <option value="futures">Binance USDT-M Futures</option>
+          <option value="spot">Binance Spot</option>
+        </select>
+      </div>
+
+      <div class="control grow">
+        <label for="search">Symbol Search</label>
+        <input id="search" type="text" placeholder="BTC, ETH, SNX...">
+      </div>
+
+      <div class="control">
+        <label for="autoRefresh">Auto Refresh</label>
+        <select id="autoRefresh">
+          <option value="0">Off</option>
+          <option value="1">1 min</option>
+          <option value="5">5 min</option>
+        </select>
+      </div>
+
+      <button id="scanBtn" class="primary">Scan Now</button>
+    </section>
+
+    <section class="info-grid">
+      <div class="info card">
+        <b>🔴 Bearish rejection</b>
+        <span>5m/10m candle पिछले 1H High के ऊपर शुरू/ट्रेड करके उसी High के नीचे close करे.</span>
+      </div>
+      <div class="info card">
+        <b>🟢 Bullish reclaim</b>
+        <span>5m/10m candle पिछले 1H Low के नीचे जाए/शुरू हो और उसी Low के ऊपर close करे.</span>
+      </div>
+    </section>
+
+    <section class="summary">
+      <div class="stat card"><span>Scanned</span><strong id="scanned">0</strong></div>
+      <div class="stat card"><span>Signals</span><strong id="signals">0</strong></div>
+      <div class="stat card"><span>Last Scan</span><strong id="lastScan">—</strong></div>
+    </section>
+
+    <section class="card table-card">
+      <div class="table-head">
+        <h2>Signals</h2>
+        <span id="resultNote">Scan शुरू करें</span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Symbol</th>
+              <th>Signal</th>
+              <th>Scan Close</th>
+              <th>1H Level</th>
+              <th>Wick</th>
+              <th>Chart</th>
+            </tr>
+          </thead>
+          <tbody id="results">
+            <tr><td colspan="7" class="empty">अभी कोई scan नहीं हुआ.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card rules">
+      <h2>Exact Signal Rule</h2>
+      <ul>
+        <li><b>🔴 BEARISH:</b> Previous completed 1H candle का High reference होगा. 5m/10m candle का <b>High उस High के ऊपर</b> जाए और उसी candle का <b>Close उस High के नीचे</b> हो → signal.</li>
+        <li><b>🟢 BULLISH:</b> Previous completed 1H candle का Low reference होगा. 5m/10m candle का <b>Low उस Low के नीचे</b> जाए और उसी candle का <b>Close उस Low के ऊपर</b> हो → signal.</li>
+        <li>मतलब सिर्फ बाहर close करने पर signal नहीं आएगा; पहले <b>level cross/wick</b> होना और फिर <b>वापस level के अंदर close</b> होना जरूरी है.</li>
+        <li>Signal केवल <b>closed</b> 5m/10m candle पर बनेगा.</li>
+        <li>यह tool केवल technical scan है; इसे trading advice न मानें.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    Data source: Binance public market APIs • GitHub Pages compatible • No API key required
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
