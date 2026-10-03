@@ -1,117 +1,43 @@
-<!DOCTYPE html>
-<html lang="hi">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>1H High/Low Rejection & Reclaim Scanner</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <header class="topbar">
-    <div>
-      <h1>1H High / Low Rejection & Reclaim Scanner</h1>
-      <p>5m या 10m candle 1H High/Low को पार करके वापस अंदर close करे तो signal</p>
-    </div>
-    <div class="status-wrap">
-      <span id="statusDot" class="dot"></span>
-      <span id="statusText">Ready</span>
-    </div>
-  </header>
-
-  <main class="container">
-    <section class="controls card">
-      <div class="control">
-        <label for="scanTf">Scan Candle</label>
-        <select id="scanTf">
-          <option value="5m">5 Minutes</option>
-          <option value="10m">10 Minutes</option>
-        </select>
-      </div>
-
-      <div class="control">
-        <label for="market">Market</label>
-        <select id="market">
-          <option value="futures">Binance USDT-M Futures</option>
-          <option value="spot">Binance Spot</option>
-        </select>
-      </div>
-
-      <div class="control grow">
-        <label for="search">Symbol Search</label>
-        <input id="search" type="text" placeholder="BTC, ETH, SNX...">
-      </div>
-
-      <div class="control">
-        <label for="autoRefresh">Auto Refresh</label>
-        <select id="autoRefresh">
-          <option value="0">Off</option>
-          <option value="1">1 min</option>
-          <option value="5">5 min</option>
-        </select>
-      </div>
-
-      <button id="scanBtn" class="primary">Scan Now</button>
-    </section>
-
-    <section class="info-grid">
-      <div class="info card">
-        <b>🔴 Bearish rejection</b>
-        <span>5m/10m candle पिछले 1H High के ऊपर शुरू/ट्रेड करके उसी High के नीचे close करे.</span>
-      </div>
-      <div class="info card">
-        <b>🟢 Bullish reclaim</b>
-        <span>5m/10m candle पिछले 1H Low के नीचे जाए/शुरू हो और उसी Low के ऊपर close करे.</span>
-      </div>
-    </section>
-
-    <section class="summary">
-      <div class="stat card"><span>Scanned</span><strong id="scanned">0</strong></div>
-      <div class="stat card"><span>Signals</span><strong id="signals">0</strong></div>
-      <div class="stat card"><span>Last Scan</span><strong id="lastScan">—</strong></div>
-    </section>
-
-    <section class="card table-card">
-      <div class="table-head">
-        <h2>Signals</h2>
-        <span id="resultNote">Scan शुरू करें</span>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Symbol</th>
-              <th>Signal</th>
-              <th>Scan Close</th>
-              <th>1H Level</th>
-              <th>Wick</th>
-              <th>Chart</th>
-            </tr>
-          </thead>
-          <tbody id="results">
-            <tr><td colspan="7" class="empty">अभी कोई scan नहीं हुआ.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="card rules">
-      <h2>Exact Signal Rule</h2>
-      <ul>
-        <li><b>🔴 BEARISH:</b> Previous completed 1H candle का High reference होगा. 5m/10m candle का <b>High उस High के ऊपर</b> जाए और उसी candle का <b>Close उस High के नीचे</b> हो → signal.</li>
-        <li><b>🟢 BULLISH:</b> Previous completed 1H candle का Low reference होगा. 5m/10m candle का <b>Low उस Low के नीचे</b> जाए और उसी candle का <b>Close उस Low के ऊपर</b> हो → signal.</li>
-        <li>मतलब सिर्फ बाहर close करने पर signal नहीं आएगा; पहले <b>level cross/wick</b> होना और फिर <b>वापस level के अंदर close</b> होना जरूरी है.</li>
-        <li>Signal केवल <b>closed</b> 5m/10m candle पर बनेगा.</li>
-        <li>यह tool केवल technical scan है; इसे trading advice न मानें.</li>
-      </ul>
-    </section>
-  </main>
-
-  <footer>
-    Data source: Binance public market APIs • GitHub Pages compatible • No API key required
-  </footer>
-
-  <script src="app.js"></script>
-</body>
-</html>
+<!doctype html>
+<html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>1H Fakeout Scanner</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b1220;color:#e8eef8;font:15px Arial,sans-serif}header{padding:18px;background:#111c30;border-bottom:1px solid #263650}h1{font-size:21px;margin:0 0 7px}p{color:#aebbd0;margin:4px 0}.wrap{max-width:1100px;margin:auto;padding:16px}.panel{background:#111c30;border:1px solid #263650;border-radius:12px;padding:14px;margin-bottom:14px}.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:end}label{display:block;color:#b8c6da;font-size:12px;margin-bottom:6px}input,select,button{background:#0b1220;color:#eef4ff;border:1px solid #344763;border-radius:8px;padding:10px}button{background:#1765d1;border:0;font-weight:bold;cursor:pointer}.status{font-size:13px;color:#9db0ca;margin-top:10px}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:650px}th,td{text-align:left;padding:11px;border-bottom:1px solid #263650}th{color:#9fb1c9;font-size:12px} .bull{color:#30d49a;font-weight:bold}.bear{color:#ff7e85;font-weight:bold}.muted{color:#91a3bd}.note{font-size:13px;line-height:1.5;color:#b5c4d9}
+</style></head><body><header><div class="wrap"><h1>1H Fakeout Scanner — CoinDCX</h1><p>पिछली पूरी 1 घंटे की candle का High/Low लेकर 5 मिनट candle close से signal</p></div></header>
+<main class="wrap"><section class="panel"><div class="controls">
+<div><label>Coin pair (उदाहरण: BTC_USDT)</label><input id="pair" value="BTC_USDT" /></div>
+<div><label>Scan list (comma separated)</label><input id="pairs" style="min-width:270px" value="BTC_USDT,ETH_USDT,SNX_USDT,NIGHT_USDT" /></div>
+<div><label>Auto refresh</label><select id="refresh"><option value="0">बंद</option><option value="60">हर 1 मिनट</option><option value="300">हर 5 मिनट</option></select></div>
+<button id="scan">Scan करें</button></div><div class="status" id="status">तैयार। Scan दबाएँ।</div></section>
+<section class="panel"><h3>Signal</h3><div class="tablewrap"><table><thead><tr><th>Coin</th><th>Signal</th><th>पिछली 1H का level</th><th>5m candle close</th><th>Wick extreme</th><th>समय</th></tr></thead><tbody id="results"><tr><td colspan="6" class="muted">अभी कोई scan नहीं हुआ।</td></tr></tbody></table></div></section>
+<section class="panel note"><b>Signal नियम</b><br>🟢 Bullish: 5m candle का Low पिछली पूरी 1H candle के Low से नीचे जाए और उसी 5m candle का Close उस Low के ऊपर हो।<br>🔴 Bearish: 5m candle का High पिछली पूरी 1H candle के High से ऊपर जाए और उसी 5m candle का Close उस High के नीचे हो।<br><br>यह scanner केवल candle-close पर बने signal दिखाता है; यह profit की गारंटी या buy/sell सलाह नहीं है। Public API में pair/data उपलब्ध न होने पर coin skip हो सकता है।</section></main>
+<script>
+const $=id=>document.getElementById(id);let timer=null;
+function fmt(x){return Number(x).toPrecision(7).replace(/\.?0+$/,'')}
+async function candles(pair,interval,limit=5){
+ const end=Date.now(),start=end-limit*(interval==='1h'?3600000:300000);
+ const url=`https://public.coindcx.com/market_data/candles?pair=B-${encodeURIComponent(pair)}&interval=${interval}&start=${start}&end=${end}`;
+ const r=await fetch(url);if(!r.ok)throw Error('API '+r.status);const d=await r.json();return Array.isArray(d)?d:[];
+}
+function norm(c){return {open:+(c.open??c.o),high:+(c.high??c.h),low:+(c.low??c.l),close:+(c.close??c.c),time:+(c.time??c.t??c.timestamp)}}
+async function scanOne(pair){
+ const [hs,ms]=await Promise.all([candles(pair,'1h',4),candles(pair,'5m',4)]);
+ const h=hs.map(norm).filter(x=>x.high&&x.low).sort((a,b)=>a.time-b.time);
+ const m=ms.map(norm).filter(x=>x.high&&x.low).sort((a,b)=>a.time-b.time);
+ if(h.length<2||!m.length)return null;
+ // Most recent completed hourly candle is the reference; latest 5m candle may still be forming, so use previous one.
+ const ref=h[h.length-2], c=m[m.length-2];
+ if(c.low<ref.low&&c.close>ref.low)return {pair,signal:'BULLISH',level:ref.low,close:c.close,extreme:c.low,time:c.time};
+ if(c.high>ref.high&&c.close<ref.high)return {pair,signal:'BEARISH',level:ref.high,close:c.close,extreme:c.high,time:c.time};
+ return null;
+}
+async function scan(){
+ $('scan').disabled=true;$('status').textContent='डेटा लिया जा रहा है…';
+ const pairs=[...new Set(($('pairs').value+','+$('pair').value).split(',').map(x=>x.trim().toUpperCase()).filter(Boolean))];
+ const out=[];let errors=0;
+ for(const p of pairs){try{const s=await scanOne(p);if(s)out.push(s)}catch(e){errors++}}
+ $('results').innerHTML=out.length?out.map(s=>`<tr><td>${s.pair}</td><td class="${s.signal==='BULLISH'?'bull':'bear'}">${s.signal}</td><td>${fmt(s.level)}</td><td>${fmt(s.close)}</td><td>${fmt(s.extreme)}</td><td>${s.time?new Date(s.time).toLocaleString():'—'}</td></tr>`).join(''):'<tr><td colspan="6" class="muted">इस scan में कोई नया signal नहीं मिला।</td></tr>';
+ $('status').textContent=`Scan पूरा: ${pairs.length} pair | ${out.length} signal${errors?` | ${errors} pair में data/API error`:''}.`; $('scan').disabled=false;
+}
+$('scan').addEventListener('click',scan);
+$('refresh').addEventListener('change',()=>{if(timer)clearInterval(timer);const n=+$('refresh').value;if(n)timer=setInterval(scan,n*1000)});
+</script></body></html>
