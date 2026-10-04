@@ -1,1 +1,16 @@
-
+{
+  "name": "coindcx-1h-wick-followthrough-scanner",
+  "version": "3.0.0",
+  "private": true,
+  "description": "CoinDCX-only scanner: wick above/below previous completed 1H level, then same or later 5m/10m close confirms",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
