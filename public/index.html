@@ -1,17 +1,55 @@
 <!doctype html>
-<html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>1H Rejection / Reclaim Scanner</title><link rel="stylesheet" href="style.css"></head>
-<body><header><h1>1H High/Low Rejection Scanner</h1><p>5m / 10m candle level cross करके वापस close करे तभी signal</p></header>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CoinDCX 1H Rejection / Reclaim Scanner</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand">CoinDCX Scanner</div>
+  <h1>1H High / Low Rejection & Reclaim</h1>
+  <p>सिर्फ CoinDCX के active USDT spot coins • 5m / 10m scanner</p>
+</header>
+
 <main>
-<section class="controls">
-<label>Scan candle <select id="interval"><option value="5m">5 Minutes</option><option value="10m">10 Minutes</option></select></label>
-<label>Market <select id="market"><option value="futures">USDT Futures</option><option value="spot">Spot</option></select></label>
-<label>Symbol filter <input id="filter" placeholder="BTC, ETH, SNX..."></label>
-<button id="scan">Scan Now</button>
-</section>
-<section class="cards"><div><span>Scanned symbols</span><strong id="scanned">0</strong></div><div><span>Signals</span><strong id="count">0</strong></div><div><span>Status</span><strong id="status">Ready</strong></div></section>
-<section class="explain"><p><b class="bear">🔴 Bearish:</b> 5m/10m candle का High पिछले completed 1H High के ऊपर जाए, और उसी candle का Close उस High के नीचे हो.</p>
-<p><b class="bull">🟢 Bullish:</b> 5m/10m candle का Low पिछले completed 1H Low के नीचे जाए, और उसी candle का Close उस Low के ऊपर हो.</p>
-<p>केवल बंद candle पर signal बनेगा; wick cross + वापस level के अंदर close होना जरूरी है.</p></section>
-<div class="tablewrap"><table><thead><tr><th>Time</th><th>Symbol</th><th>Signal</th><th>Close</th><th>1H Level</th><th>Wick</th><th>Chart</th></tr></thead><tbody id="rows"><tr><td colspan="7">Scan Now दबाएँ.</td></tr></tbody></table></div>
-</main><footer>Public Binance market data • API key की जरूरत नहीं</footer><script src="app.js"></script></body></html>
+  <section class="controls">
+    <label>Scan candle
+      <select id="interval">
+        <option value="5m">5 Minutes</option>
+        <option value="10m">10 Minutes</option>
+      </select>
+    </label>
+    <label>Coin filter
+      <input id="filter" placeholder="BTC, ETH, SNX...">
+    </label>
+    <button id="scan">Scan Now</button>
+  </section>
+
+  <section class="stats">
+    <div><span>CoinDCX USDT markets</span><b id="total">0</b></div>
+    <div><span>Scanned</span><b id="scanned">0</b></div>
+    <div><span>Signals</span><b id="signals">0</b></div>
+    <div><span>Status</span><b id="status">Loading…</b></div>
+  </section>
+
+  <section class="rule">
+    <h2>Exact Signal Rule</h2>
+    <p><strong class="bear">🔴 Bearish:</strong> Previous completed 1H candle का High reference होगा. 5m/10m candle पहले उस High के ऊपर जाए और उसी closed candle का Close उस High के नीचे हो → signal.</p>
+    <p><strong class="bull">🟢 Bullish:</strong> Previous completed 1H candle का Low reference होगा. 5m/10m candle पहले उस Low के नीचे जाए और उसी closed candle का Close उस Low के ऊपर हो → signal.</p>
+    <p><b>Wick + वापस close जरूरी है.</b> सिर्फ बाहर close होने पर signal नहीं आएगा. Running candle को signal में नहीं लिया जाएगा.</p>
+  </section>
+
+  <section class="tableWrap">
+    <table>
+      <thead><tr><th>Time</th><th>Coin</th><th>Signal</th><th>Close</th><th>1H Level</th><th>Wick</th><th>Chart</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="7">Scan Now दबाएँ.</td></tr></tbody>
+    </table>
+  </section>
+</main>
+
+<footer>Data source: CoinDCX public market & candle APIs • API key की जरूरत नहीं</footer>
+<script src="app.js"></script>
+</body>
+</html>
