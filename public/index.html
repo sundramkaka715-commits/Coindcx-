@@ -1,253 +1,85 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CoinDCX 1H Sweep Radar</title>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CoinDCX 1H Sweep Radar V15 PRO</title>
 <style>
-:root{--bg:#07111f;--panel:#0d1a2b;--panel2:#101f33;--line:#223550;--text:#e9f0f8;--muted:#91a3b8;--green:#18c98b;--red:#ff5575;--yellow:#ffc857;--blue:#4da3ff}
-*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#06101d,#091728 45%,#07111f);color:var(--text);font-family:Inter,system-ui,Arial,sans-serif}
-header{padding:22px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(7,17,31,.94);backdrop-filter:blur(10px);z-index:5}
-h1{margin:0 0 5px;font-size:25px}.sub{color:var(--muted);font-size:13px}
-.wrap{max-width:1450px;margin:auto;padding:18px 20px 50px}.toolbar,.stats,.grid{display:grid;gap:12px}.toolbar{grid-template-columns:130px 1fr auto auto;align-items:center}.toolbar select,.toolbar input,.toolbar button{height:42px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--text);padding:0 12px}
-button{cursor:pointer;font-weight:700}.primary{background:var(--blue)!important;color:#03101c!important;border:0!important}.ghost{background:var(--panel2)!important}
-.stats{grid-template-columns:repeat(6,1fr);margin:16px 0}.stat,.card{background:linear-gradient(145deg,var(--panel),#0a1625);border:1px solid var(--line);border-radius:14px}.stat{padding:14px}.stat b{display:block;font-size:22px;margin-top:5px}.label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.grid{grid-template-columns:1fr 1fr;margin-top:14px}.card{padding:16px}.card h2{font-size:15px;margin:0 0 12px}.wide{grid-column:1/-1}
-table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:11px 8px;border-bottom:1px solid #1b2b41;text-align:left}th{color:var(--muted);font-size:11px;text-transform:uppercase}
-.badge{padding:5px 8px;border-radius:999px;font-weight:800;font-size:11px;display:inline-block}.bear{background:#3a1420;color:#ff8098}.bull{background:#103326;color:#55e0ac}.watch{background:#3b2c0b;color:#ffd36a}.strong{color:#55e0ac}.normal{color:#ffd36a}.weak{color:#ff8d9f}
-.scroll{max-height:430px;overflow:auto}.empty{padding:25px;text-align:center;color:var(--muted)}
-#modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;z-index:20;padding:18px}.modalbox{max-width:1100px;margin:auto;background:#081525;border:1px solid var(--line);border-radius:16px;overflow:hidden;max-height:95vh;overflow:auto}.modalhead{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.close{background:none;border:0;color:white;font-size:25px}
-#priceChart{height:420px;width:100%;display:block;background:#07111f}.rsiwrap{padding:0 16px 16px}.rsititle{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;padding:8px 0}.chartnote{font-size:12px;color:var(--muted);padding:8px 16px 14px}
-.progress{height:8px;background:#122239;border-radius:9px;overflow:hidden;margin:10px 0}.bar{height:100%;width:0;background:var(--blue);transition:width .2s}
-.small{font-size:12px;color:var(--muted)}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.pill{padding:6px 9px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:11px}
-@media(max-width:900px){.stats{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr}.wide{grid-column:auto}.toolbar{grid-template-columns:1fr 1fr}.toolbar input{grid-column:1/-1}}
-@media(max-width:560px){.stats{grid-template-columns:repeat(2,1fr)}.toolbar{grid-template-columns:1fr}.toolbar input{grid-column:auto}}
-</style>
-</head>
-<body>
-<header><h1>CoinDCX 1H Sweep Radar</h1><div class="sub">1H High/Low sweep → same or later 5m/10m confirmation · CoinDCX USDT only</div></header>
-<div class="wrap">
-  <div class="toolbar">
-    <select id="tf"><option value="5">5m confirmation</option><option value="10">10m confirmation</option></select>
-    <input id="filter" placeholder="Filter coin e.g. BTC, ETH, SOL">
-    <button class="ghost" id="refresh">Refresh markets</button>
-    <button class="primary" id="scan">Scan now</button>
-  </div>
-  <div class="stats">
-    <div class="stat"><span class="label">CoinDCX USDT</span><b id="marketCount">—</b></div>
-    <div class="stat"><span class="label">Scanned</span><b id="scanned">0</b></div>
-    <div class="stat"><span class="label">Confirmed</span><b id="confirmed">0</b></div>
-    <div class="stat"><span class="label">Watching</span><b id="watching">0</b></div>
-    <div class="stat"><span class="label">Strong</span><b id="strong">0</b></div>
-    <div class="stat"><span class="label">Status</span><b id="status" style="font-size:15px">Ready</b></div>
-  </div>
-  <div class="progress"><div class="bar" id="bar"></div></div>
+:root{--bg:#060d14;--p:#0d1721;--p2:#101e2b;--line:#223546;--txt:#edf6fb;--muted:#8da4b6;--g:#35d39a;--r:#ff6473;--y:#f2c96d;--b:#68b4ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,#102336 0,#060d14 42%);color:var(--txt);font-family:Inter,system-ui,Arial,sans-serif}.wrap{max-width:1550px;margin:auto;padding:16px}
+.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.brand h1{font-size:25px;margin:0}.brand p{margin:5px 0;color:var(--muted);font-size:12px}.pro{padding:8px 11px;border:1px solid #2d4559;border-radius:12px;background:#0c1823;font-size:11px}
+.controls{display:grid;grid-template-columns:1.15fr .7fr .85fr .9fr auto auto;gap:9px;margin-top:15px}.box,.stat,.card,.section{background:rgba(13,23,33,.94);border:1px solid var(--line);border-radius:14px}.box{padding:10px}.box label{display:block;font-size:10px;color:var(--muted);margin-bottom:6px}.box select,.box button{width:100%;background:#08131d;color:var(--txt);border:1px solid #2a4355;border-radius:9px;padding:9px;font-weight:750}.box button{cursor:pointer}.primary{background:#17354c!important}.stats{display:grid;grid-template-columns:repeat(7,1fr);gap:9px;margin-top:10px}.stat{padding:11px}.stat b{font-size:19px;display:block}.stat span{font-size:10px;color:var(--muted)}.trend{font-weight:850}.bull{color:var(--g)}.bear{color:var(--r)}.neutral{color:var(--y)}
+h2{font-size:15px;margin:20px 0 9px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.card{padding:13px}.row{display:flex;justify-content:space-between;align-items:center;gap:8px}.coin{font-weight:900;font-size:16px}.pill{font-size:10px;font-weight:900;padding:5px 8px;border:1px solid;border-radius:999px}.meta{color:var(--muted);font-size:11px;line-height:1.5}.score{font-size:25px;font-weight:950}.bar{height:5px;background:#182735;border-radius:9px;margin:8px 0}.bar i{display:block;height:100%;background:linear-gradient(90deg,#527fff,#35d39a);border-radius:9px}.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.chip{font-size:10px;padding:4px 6px;background:#0a151f;border:1px solid #223746;border-radius:7px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}.actions button{padding:8px;border:1px solid #294052;background:#0a151f;color:var(--txt);border-radius:8px;cursor:pointer}.empty{padding:18px;border:1px dashed #294052;border-radius:12px;color:var(--muted);text-align:center}.note{padding:12px;color:var(--muted);font-size:11px;line-height:1.6}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:50;overflow:auto;padding:8px}.modal.open{display:block}.modalbox{max-width:1180px;margin:10px auto;background:#08121c;border:1px solid #2b4355;border-radius:16px;padding:13px}.close{float:right;background:#142432;color:white;border:1px solid #294052;border-radius:8px;padding:7px 11px;cursor:pointer}.chartbox{background:#050c12;border:1px solid #1d303e;border-radius:11px;padding:7px;margin-top:9px}canvas{width:100%;display:block}.price{height:420px}.rsi{height:145px}.info{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-top:10px}.info div{background:#0b1721;border:1px solid #1e3343;border-radius:8px;padding:8px}.info b{display:block;font-size:12px}.info span{font-size:9px;color:var(--muted)}
+@media(max-width:1050px){.controls{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:repeat(2,1fr)}.info{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:650px){.wrap{padding:9px}.brand h1{font-size:19px}.controls,.stats,.grid{grid-template-columns:1fr}.info{grid-template-columns:repeat(2,1fr)}.price{height:300px}.rsi{height:120px}.modal{padding:4px}.modalbox{margin:2px auto}}
+</style></head>
+<body><div class="wrap">
+<div class="top"><div class="brand"><h1>CoinDCX 1H Sweep Radar <b>V15 PRO</b></h1><p>Liquidity sweep · BTC regime · direction filter · chart · RSI · setup score</p></div><div class="pro">CoinDCX USDT only · Rule-based · No profit guarantee</div></div>
 
-  <div class="grid">
-    <section class="card"><h2>🔥 Strongest confirmed setups</h2><div class="scroll" id="strongList"><div class="empty">Run a scan.</div></div></section>
-    <section class="card"><h2>🟡 Live formations / watching</h2><div class="scroll" id="watchList"><div class="empty">No active sweep yet.</div></div></section>
-    <section class="card wide"><h2>🔴🟢 Confirmed signals</h2><div class="scroll" id="signalList"><div class="empty">No signals.</div></div></section>
-    <section class="card wide"><h2>📚 Strategy Lab</h2>
-      <div class="row">
-        <span class="pill">Rule: previous completed 1H High/Low</span>
-        <span class="pill">Sweep can confirm on same / later candle</span>
-        <span class="pill">RSI 14 shown on chart</span>
-        <span class="pill">Score is a rule-based quality score, not a prediction</span>
-      </div>
-      <p class="small">This panel counts the current scan's setups. For a true historical win-rate/backtest, the app must retain historical candles and run the exact entry/exit rules over a selected period.</p>
-      <div id="lab" class="small"></div>
-    </section>
-  </div>
+<div class="controls">
+<div class="box"><label>YOUR DIRECTION</label><select id="dir"><option value="both">🟢🔴 BOTH</option><option value="bullish">🟢 BULLISH ONLY</option><option value="bearish">🔴 BEARISH ONLY</option></select></div>
+<div class="box"><label>TRIGGER</label><select id="tf"><option value="5">5 MIN</option><option value="10">10 MIN</option></select></div>
+<div class="box"><label>BTC 1H MODE</label><select id="btcMode"><option value="off">OFF</option><option value="aligned">BTC-ALIGNED ONLY</option></select></div>
+<div class="box"><label>COIN</label><select id="coin"><option>ALL COINS</option></select></div>
+<div class="box"><label>REFRESH</label><select id="refresh"><option value="0">MANUAL</option><option value="5">5 MIN</option><option value="10">10 MIN</option></select></div>
+<div class="box"><label>ACTION</label><button class="primary" id="scan">SCAN NOW</button></div>
 </div>
 
-<div id="modal">
- <div class="modalbox">
-  <div class="modalhead"><div><b id="mTitle">Chart</b><div class="small" id="mMeta"></div></div><button class="close" onclick="closeChart()">×</button></div>
-  <canvas id="priceChart"></canvas>
-  <div class="chartnote">Previous completed 1H High/Low are shown as levels. Sweep and confirmation are highlighted when available.</div>
-  <div class="rsiwrap"><div class="rsititle"><span>RSI 14</span><span>70 Overbought · 30 Oversold · <b id="rsiNow">—</b></span></div><canvas id="rsiChart" style="width:100%;height:150px;background:#07111f"></canvas></div>
- </div>
+<div class="stats">
+<div class="stat"><b id="bt">—</b><span>BTC 1H REGIME</span></div><div class="stat"><b id="mc">—</b><span>COINDCX USDT</span></div>
+<div class="stat"><b id="sc">0</b><span>SCANNED</span></div><div class="stat"><b id="cf">0</b><span>CONFIRMED</span></div>
+<div class="stat"><b id="wg">0</b><span>WATCHING</span></div><div class="stat"><b id="ap">0</b><span>A+ (85+)</span></div><div class="stat"><b id="st">READY</b><span>STATUS</span></div>
 </div>
+
+<h2>🏆 A+ / Strongest setups</h2><div id="strong" class="grid"></div>
+<h2>👀 Watching — sweep happened, confirmation pending</h2><div id="watch" class="grid"></div>
+<h2>✅ Confirmed signals</h2><div id="confirmed" class="grid"></div>
+<h2>🧠 PRO decision rules</h2><div class="section note">
+<b>Direction:</b> BOTH shows both sides; BULLISH ONLY shows only bullish; BEARISH ONLY shows only bearish.
+<b>BTC-aligned:</b> when enabled, only the direction matching the latest completed BTC 1H candle is shown.
+The scanner uses the previous completed 1H candle as the reference. A closed 5m/10m candle can sweep the level and confirm on the same candle or a later closed candle. Score is a rule-based quality score, not a prediction.
+</div>
+</div>
+
+<div id="modal" class="modal"><div class="modalbox"><button class="close" onclick="closeModal()">Close</button><h2 id="mt">Chart</h2>
+<div class="info" id="mi"></div><div class="chartbox"><canvas id="pc" class="price"></canvas></div>
+<div class="chartbox"><canvas id="rc" class="rsi"></canvas></div></div></div>
+
 <script>
-const $=id=>document.getElementById(id);
-let symbols=[], lastResults=[], busy=false;
-
-function num(x){return Number(x)||0}
-function norm(raw){
-  return (Array.isArray(raw)?raw:[]).map(c=>{
-    if(Array.isArray(c)) return {time:num(c[0]),open:num(c[1]),high:num(c[2]),low:num(c[3]),close:num(c[4]),volume:num(c[5])};
-    return {time:num(c.time||c.timestamp||c[0]),open:num(c.open||c[1]),high:num(c.high||c[2]),low:num(c.low||c[3]),close:num(c.close||c[4]),volume:num(c.volume||c[5])};
-  }).filter(c=>c.time&&c.open).sort((a,b)=>a.time-b.time);
-}
-async function api(url){const r=await fetch(url);if(!r.ok)throw Error(await r.text());return r.json()}
-function pair(sym){return "B-"+sym.slice(0,-4)+"_USDT"}
-function aggregate1m(cs, minutes){
-  const ms=minutes*60000, map=new Map();
-  for(const c of cs){
-    const k=Math.floor(c.time/ms)*ms;
-    if(!map.has(k)) map.set(k,{time:k,open:c.open,high:c.high,low:c.low,close:c.close,volume:c.volume,count:1});
-    else {let x=map.get(k);x.high=Math.max(x.high,c.high);x.low=Math.min(x.low,c.low);x.close=c.close;x.volume+=c.volume;x.count++;}
-  }
-  const now=Date.now(), out=[...map.values()].sort((a,b)=>a.time-b.time);
-  return out.filter(x=>x.time+ms<=now+1000 && x.count>=minutes-1);
-}
-function rsi(cs, period=14){
-  const out=Array(cs.length).fill(null); if(cs.length<=period)return out;
-  let gain=0,loss=0;
-  for(let i=1;i<=period;i++){let d=cs[i].close-cs[i-1].close;gain+=Math.max(d,0);loss+=Math.max(-d,0)}
-  let ag=gain/period, al=loss/period; out[period]=al===0?100:100-100/(1+ag/al);
-  for(let i=period+1;i<cs.length;i++){let d=cs[i].close-cs[i-1].close;ag=(ag*(period-1)+Math.max(d,0))/period;al=(al*(period-1)+Math.max(-d,0))/period;out[i]=al===0?100:100-100/(1+ag/al)}
-  return out;
-}
-function score(setup, candles){
-  let s=55;
-  const ref=setup.ref;
-  const c=setup.confirm;
-  const sweep=setup.sweep;
-  const range=Math.max(c.high-c.low,ref.high-ref.low,1e-12);
-  const body=Math.abs(c.close-c.open);
-  const bodyPct=body/Math.max(c.high-c.low,1e-12);
-  if(bodyPct>.55)s+=10; else if(bodyPct>.35)s+=5;
-  const sweepDepth=setup.dir==="BEARISH"?(sweep.high-ref.high):(ref.low-sweep.low);
-  if(sweepDepth>range*.10)s+=10; else if(sweepDepth>range*.03)s+=5;
-  if(setup.waitBars===0)s+=10; else if(setup.waitBars===1)s+=6; else if(setup.waitBars<=3)s+=3;
-  const rrVol=(c.volume||0)/(sweep.volume||c.volume||1);
-  if(rrVol>1.5)s+=5; else if(rrVol>1.1)s+=3;
-  return Math.max(1,Math.min(100,Math.round(s)));
-}
-function analyze(sym, oneH, oneM, minutes){
-  const h=norm(oneH), m=aggregate1m(norm(oneM),minutes);
-  if(h.length<2||m.length<5)return null;
-  const now=Date.now();
-  const completedH=h.filter(x=>x.time+3600000<=now+1000);
-  if(completedH.length<2)return null;
-  const ref=completedH[completedH.length-1];
-  const scans=m.filter(x=>x.time>ref.time+3600000);
-  if(!scans.length)return null;
-  let bearSweep=null,bullSweep=null, bearConfirm=null,bullConfirm=null;
-  for(let i=0;i<scans.length;i++){
-    const c=scans[i];
-    if(!bearSweep && c.high>ref.high) bearSweep={c,i};
-    if(!bullSweep && c.low<ref.low) bullSweep={c,i};
-    if(bearSweep && !bearConfirm && c.close<ref.high){
-      bearConfirm={c,i}; break;
-    }
-    if(bullSweep && !bullConfirm && c.close>ref.low){
-      bullConfirm={c,i}; break;
-    }
-  }
-  // Find latest independently if both sides can happen.
-  function find(dir){
-    const level=dir==="BEARISH"?ref.high:ref.low;
-    let sweep=null;
-    for(let i=0;i<scans.length;i++){
-      const c=scans[i];
-      if(!sweep && (dir==="BEARISH"?c.high>level:c.low<level)){sweep={c,i};continue}
-      if(sweep && (dir==="BEARISH"?c.close<level:c.close>level)){
-        return {dir,ref,sweep:sweep.c,confirm:c,waitBars:i-sweep.i};
-      }
-    }
-    if(sweep)return {dir,ref,sweep:sweep.c,confirm:null,waitBars:null};
-    return null;
-  }
-  const candidates=[find("BEARISH"),find("BULLISH")].filter(Boolean);
-  const confirmed=candidates.filter(x=>x.confirm);
-  const watching=candidates.filter(x=>!x.confirm);
-  const best=confirmed.sort((a,b)=>b.confirm.time-a.confirm.time)[0]||watching.sort((a,b)=>b.sweep.time-a.sweep.time)[0];
-  if(!best)return null;
-  const setup={...best,symbol:sym,status:best.confirm?"CONFIRMED":"WATCHING"};
-  if(best.confirm)setup.score=score(setup,m);
-  return setup;
-}
-function fmtPrice(x){if(!x)return "—"; if(Math.abs(x)>=100)return x.toFixed(2); if(Math.abs(x)>=1)return x.toFixed(4); return x.toPrecision(6)}
-function row(r){
-  const cls=r.dir==="BEARISH"?"bear":"bull";
-  const state=r.status==="WATCHING"?"watch":cls;
-  const when=r.confirm||r.sweep;
-  return `<tr><td><b>${r.symbol}</b></td><td><span class="badge ${state}">${r.status==="WATCHING"?"WATCHING":r.dir}</span></td><td>${fmtPrice(r.ref[r.dir==="BEARISH"?"high":"low"])}</td><td>${fmtPrice(r.sweep[r.dir==="BEARISH"?"high":"low"])}</td><td>${r.confirm?fmtPrice(r.confirm.close):"Pending"}</td><td>${r.status==="CONFIRMED"?r.waitBars:"—"}</td><td>${r.status==="CONFIRMED"?r.score+"/100":"—"}</td><td><button class="ghost" onclick='openChart(${JSON.stringify(r.symbol)})'>Chart</button></td></tr>`;
-}
-async function loadMarkets(){
-  $("status").textContent="Loading markets…";
-  const d=await api("/api/markets");symbols=d.symbols||[];$("marketCount").textContent=symbols.length;$("status").textContent="Ready";
-}
-async function scan(){
-  if(busy)return;busy=true;
-  $("scan").disabled=true;$("status").textContent="Scanning…";$("bar").style.width="0%";
-  const mins=Number($("tf").value), filter=$("filter").value.trim().toUpperCase();
-  const list=symbols.filter(s=>!filter||s.includes(filter));
-  let results=[], done=0; const batch=7;
-  for(let i=0;i<list.length;i+=batch){
-    const group=list.slice(i,i+batch);
-    const out=await Promise.all(group.map(async sym=>{
-      try{
-        const [h,m]=await Promise.all([api(`/api/candles?pair=${pair(sym)}&interval=1h&limit=20`),api(`/api/candles?pair=${pair(sym)}&interval=1m&limit=500`)]);
-        return analyze(sym,h,m,mins);
-      }catch(e){return null}
-    }));
-    results.push(...out.filter(Boolean));done=Math.min(list.length,i+group.length);
-    $("scanned").textContent=done;$("bar").style.width=(done/Math.max(1,list.length)*100).toFixed(1)+"%";
-  }
-  lastResults=results;
-  render(results);
-  $("status").textContent=`Done · ${results.filter(x=>x.status==="CONFIRMED").length} confirmed`;
-  $("scan").disabled=false;busy=false;
-}
-function render(rs){
-  const conf=rs.filter(x=>x.status==="CONFIRMED").sort((a,b)=>(b.score||0)-(a.score||0));
-  const watch=rs.filter(x=>x.status==="WATCHING").sort((a,b)=>b.sweep.time-a.sweep.time);
-  $("confirmed").textContent=conf.length;$("watching").textContent=watch.length;$("strong").textContent=conf.filter(x=>x.score>=80).length;
-  const head=`<table><thead><tr><th>Coin</th><th>Setup</th><th>1H Level</th><th>Sweep</th><th>Confirm</th><th>Wait</th><th>Score</th><th></th></tr></thead><tbody>`;
-  const tail="</tbody></table>";
-  $("signalList").innerHTML=conf.length?head+conf.map(row).join("")+tail:`<div class="empty">No confirmed signal in the scanned window.</div>`;
-  $("watchList").innerHTML=watch.length?head+watch.map(row).join("")+tail:`<div class="empty">No active sweep in the scanned window.</div>`;
-  $("strongList").innerHTML=conf.length?head+conf.slice(0,15).map(row).join("")+tail:`<div class="empty">No confirmed setup.</div>`;
-  $("lab").innerHTML=`Current scan: <b>${conf.length}</b> confirmed, <b>${watch.length}</b> watching, <b>${conf.filter(x=>x.dir==="BEARISH").length}</b> bearish, <b>${conf.filter(x=>x.dir==="BULLISH").length}</b> bullish.`;
-}
-async function openChart(sym){
-  $("modal").style.display="block";$("mTitle").textContent=sym+" · CoinDCX";$("mMeta").textContent="Loading 1m candles…";
-  try{
-    const [h,m]=await Promise.all([api(`/api/candles?pair=${pair(sym)}&interval=1h&limit=20`),api(`/api/candles?pair=${pair(sym)}&interval=1m&limit=500`)]);
-    const hh=norm(h), mm=norm(m), mins=Number($("tf").value), candles=aggregate1m(mm,mins);
-    const conf=lastResults.find(x=>x.symbol===sym);
-    drawPrice(candles,hh,conf);drawRSI(candles);
-    $("mMeta").textContent=`${mins}m candles · Previous completed 1H High/Low · RSI 14`;
-  }catch(e){$("mMeta").textContent="Chart error: "+e.message}
-}
-function closeChart(){$("modal").style.display="none"}
-function setupCanvas(canvas,height){
-  const dpr=devicePixelRatio||1,w=canvas.clientWidth||800;canvas.width=w*dpr;canvas.height=height*dpr;canvas.style.height=height+"px";const ctx=canvas.getContext("2d");ctx.scale(dpr,dpr);return {ctx,w,h:height}
-}
-function drawPrice(cs,hs,setup){
-  const {ctx,w,h}=setupCanvas($("priceChart"),420);ctx.clearRect(0,0,w,h);
-  if(!cs.length)return;
-  const pad={l:55,r:15,t:15,b:25}, W=w-pad.l-pad.r,H=h-pad.t-pad.b;
-  const show=cs.slice(-90), min=Math.min(...show.map(x=>x.low)),max=Math.max(...show.map(x=>x.high));const range=max-min||1;
-  const y=v=>pad.t+(max-v)/range*H, x=i=>pad.l+i/(show.length-1)*W;
-  ctx.strokeStyle="#17283d";ctx.lineWidth=1;ctx.font="10px Arial";ctx.fillStyle="#91a3b8";
-  for(let i=0;i<5;i++){let yy=pad.t+i*H/4;ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(w-pad.r,yy);ctx.stroke();ctx.fillText(fmtPrice(max-i*range/4),5,yy+3)}
-  const ref=hs.filter(c=>c.time+3600000<=Date.now()).slice(-1)[0];
-  if(ref){
-    [[ref.high,"1H High"],[ref.low,"1H Low"]].forEach(([v,label])=>{ctx.strokeStyle=label==="1H High"?"#ff5575":"#18c98b";ctx.setLineDash([6,5]);ctx.beginPath();ctx.moveTo(pad.l,y(v));ctx.lineTo(w-pad.r,y(v));ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=ctx.strokeStyle;ctx.fillText(label+" "+fmtPrice(v),pad.l+5,y(v)-4)})
-  }
-  show.forEach((c,i)=>{const xx=x(i),ow=Math.max(2,W/show.length*.55);ctx.strokeStyle=c.close>=c.open?"#18c98b":"#ff5575";ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.moveTo(xx,y(c.high));ctx.lineTo(xx,y(c.low));ctx.stroke();const top=y(Math.max(c.open,c.close)),bot=y(Math.min(c.open,c.close));ctx.fillRect(xx-ow/2,top,ow,Math.max(1,bot-top))});
-  if(setup){
-    const si=show.findIndex(c=>c.time===setup.sweep.time),ci=setup.confirm?show.findIndex(c=>c.time===setup.confirm.time):-1;
-    ctx.font="bold 11px Arial";
-    if(si>=0){ctx.fillStyle="#ffc857";ctx.fillText("SWEEP",Math.max(pad.l,x(si)-18),Math.max(12,y(show[si].high)-12))}
-    if(ci>=0){ctx.fillStyle=setup.dir==="BEARISH"?"#ff5575":"#18c98b";ctx.fillText("CONFIRM",Math.max(pad.l,x(ci)-22),Math.max(12,y(show[ci].low)-12))}
-  }
-}
-function drawRSI(cs){
-  const {ctx,w,h}=setupCanvas($("rsiChart"),150);ctx.clearRect(0,0,w,h);if(!cs.length)return;
-  const vals=rsi(cs).slice(-90), valid=vals.map((v,i)=>({v,i})).filter(x=>x.v!=null);if(!valid.length)return;
-  const pad={l:35,r:15,t:10,b:20},W=w-pad.l-pad.r,H=h-pad.t-pad.b,x=i=>pad.l+i/(vals.length-1)*W,y=v=>pad.t+(100-v)/100*H;
-  ctx.font="10px Arial";[70,50,30].forEach(v=>{ctx.strokeStyle=v===50?"#24364d":"#66553a";ctx.setLineDash(v===50?[]:[5,5]);ctx.beginPath();ctx.moveTo(pad.l,y(v));ctx.lineTo(w-pad.r,y(v));ctx.stroke();ctx.setLineDash([]);ctx.fillStyle="#91a3b8";ctx.fillText(v,pad.l-25,y(v)+3)});
-  ctx.strokeStyle="#4da3ff";ctx.lineWidth=2;ctx.beginPath();let started=false;vals.forEach((v,i)=>{if(v==null)return;const xx=x(i),yy=y(v);if(!started){ctx.moveTo(xx,yy);started=true}else ctx.lineTo(xx,yy)});ctx.stroke();
-  const last=valid[valid.length-1].v;$("rsiNow").textContent=last.toFixed(1);
-}
-$("refresh").onclick=loadMarkets;$("scan").onclick=scan;
-$("filter").addEventListener("keydown",e=>{if(e.key==="Enter")scan()});
-loadMarkets().catch(e=>$("status").textContent="Market error");
-</script>
-</body>
-</html>
+const $=x=>document.getElementById(x);let symbols=[],all=[],busy=false,timer=null;
+const sleep=m=>new Promise(r=>setTimeout(r,m));const n=x=>Number(x||0);
+async function J(u){let r=await fetch(u);if(!r.ok)throw Error("API "+r.status);return r.json()}
+function C(x){return{t:n(x.time),o:n(x.open),h:n(x.high),l:n(x.low),c:n(x.close),v:n(x.volume)}}
+function agg(raw,m){let a=raw.map(C).sort((x,y)=>x.t-y.t),ms=m*60000,g=new Map(),out=[];
+ for(let x of a){let k=Math.floor(x.t/ms)*ms;if(!g.has(k))g.set(k,[]);g.get(k).push(x)}
+ for(let[t,z]of g){if(z.length<m-1)continue;out.push({t,o:z[0].o,h:Math.max(...z.map(x=>x.h)),l:Math.min(...z.map(x=>x.l)),c:z[z.length-1].c,v:z.reduce((s,x)=>s+x.v,0)})}return out}
+function RSI(a,N=14){let o=Array(a.length).fill(null);if(a.length<=N)return o;let G=0,L=0;
+ for(let i=1;i<=N;i++){let d=a[i].c-a[i-1].c;if(d>=0)G+=d;else L-=d}let ag=G/N,al=L/N;o[N]=al?100-100/(1+ag/al):100;
+ for(let i=N+1;i<a.length;i++){let d=a[i].c-a[i-1].c,g=Math.max(0,d),l=Math.max(0,-d);ag=(ag*(N-1)+g)/N;al=(al*(N-1)+l)/N;o[i]=al?100-100/(1+ag/al):100}return o}
+function fmt(v){return Number.isFinite(Number(v))?Number(v).toLocaleString(undefined,{maximumSignificantDigits:7}):"—"}
+function score(s,c){let rr=Math.max(1,s.h-s.l),depth=s.dir==="bearish"?Math.max(0,s.sweep.h-s.h):Math.max(0,s.l-s.sweep.l),body=Math.abs(s.confirm.c-s.confirm.o)/Math.max(1,s.confirm.h-s.confirm.l),v=c.slice(-20).reduce((a,x)=>a+x.v,0)/Math.max(1,Math.min(20,c.length)),z=55;
+ if(body>.55)z+=10;else if(body>.35)z+=5;if(depth/rr>.1)z+=10;else if(depth/rr>.03)z+=5;if(s.wait===0)z+=10;else if(s.wait===1)z+=6;else if(s.wait<=3)z+=3;if(s.confirm.v>v*1.5)z+=5;else if(s.confirm.v>v*1.1)z+=3;return Math.min(100,z)}
+function analyze(hraw,mraw,sym){let now=Date.now(),h=hraw.map(C).sort((a,b)=>a.t-b.t),H=h.filter(x=>x.t+3600000<=now);if(H.length<2)return[];
+ let ref=H[H.length-1],m=agg(mraw,Number($("tf").value)).filter(x=>x.t>=ref.t+3600000&&x.t+Number($("tf").value)*60000<=now),out=[];if(!m.length)return[];
+ for(let dir of["bearish","bullish"]){let sw=null;for(let i=0;i<m.length;i++){if(dir==="bearish"&&m[i].h>ref.h){sw={i,x:m[i]};break}if(dir==="bullish"&&m[i].l<ref.l){sw={i,x:m[i]};break}}if(!sw)continue;
+  let found=null;for(let j=sw.i;j<m.length;j++){let ok=dir==="bearish"?m[j].c<ref.h:m[j].c>ref.l;if(ok){found={j,x:m[j]};break}}
+  let base={symbol:sym,dir,h:ref.h,l:ref.l,sweep:sw.x,candles:m,wait:found?found.j-sw.i:m.length-1-sw.i,type:found?"confirmed":"watching",confirm:found?found.x:null};
+  base.rsi=RSI(m).filter(x=>x!=null).at(-1);base.score=found?score(base,m):Math.min(84,62+Math.min(18,base.wait*2));out.push(base)}
+ return out}
+async function one(sym){try{let pair="B-"+sym.slice(0,-4)+"_USDT",[h,m]=await Promise.all([J(`/api/candles?pair=${encodeURIComponent(pair)}&interval=1h&limit=30`),J(`/api/candles?pair=${encodeURIComponent(pair)}&interval=1m&limit=700`)]);return analyze(h,m,sym)}catch{return[]}}
+async function btc(){try{let a=(await J("/api/candles?pair=B-BTC_USDT&interval=1h&limit=4")).map(C).sort((x,y)=>x.t-y.t).filter(x=>x.t+3600000<=Date.now()),x=a.at(-1),d=x.c>x.o?"bullish":x.c<x.o?"bearish":"neutral";$("bt").textContent=d.toUpperCase();$("bt").className=d;return d}catch{$("bt").textContent="—";return null}}
+function allow(r){let d=$("dir").value;if(d!=="both"&&r.dir!==d)return false;if($("coin").value!=="ALL COINS"&&r.symbol!==$("coin").value)return false;if($("btcMode").value==="aligned"){let b=$("bt").textContent.toLowerCase();if((b==="bullish"||b==="bearish")&&r.dir!==b)return false}return true}
+function card(r){let bull=r.dir==="bullish",cls=bull?"bull":"bear",status=r.type==="confirmed"?"CONFIRMED":"WATCHING";return `<div class="card"><div class="row"><span class="coin">${r.symbol}</span><span class="pill ${cls}">${bull?"🟢 BULLISH":"🔴 BEARISH"}</span></div><div class="row" style="margin-top:8px"><span class="meta">${status} · ${r.wait} candle(s)</span><span class="score">${r.score}</span></div><div class="bar"><i style="width:${r.score}%"></i></div><div class="chips"><span class="chip">RSI ${fmt(r.rsi)}</span><span class="chip">1H H ${fmt(r.h)}</span><span class="chip">1H L ${fmt(r.l)}</span></div><div class="actions"><button onclick="chart('${encodeURIComponent(JSON.stringify(r))}')">📊 Full Chart</button><button onclick="explain('${encodeURIComponent(JSON.stringify(r))}')">🧠 Why?</button></div></div>`}
+function render(){let a=all.filter(allow).sort((x,y)=>y.score-x.score),s=a.filter(x=>x.score>=85),w=a.filter(x=>x.type==="watching"),c=a.filter(x=>x.type==="confirmed");$("strong").innerHTML=s.length?s.slice(0,15).map(card).join(""):'<div class="empty">No A+ setup for this filter.</div>';$("watch").innerHTML=w.length?w.map(card).join(""):'<div class="empty">No watching setup.</div>';$("confirmed").innerHTML=c.length?c.map(card).join(""):'<div class="empty">No confirmed setup.</div>';$("cf").textContent=c.length;$("wg").textContent=w.length;$("ap").textContent=s.length}
+async function markets(){let d=await J("/api/markets");symbols=d.symbols;$("mc").textContent=d.count;$("coin").innerHTML='<option>ALL COINS</option>'+symbols.map(x=>`<option>${x}</option>`).join("")}
+async function scan(){if(busy)return;busy=true;$("st").textContent="SCANNING";all=[];let bt=await btc();let list=$("coin").value==="ALL COINS"?symbols:[$("coin").value];
+ for(let i=0;i<list.length;i++){let rs=await one(list[i]);all.push(...rs);$("sc").textContent=i+1;if(i%4===3)render()}render();$("st").textContent="DONE";busy=false}
+function explain(enc){let r=JSON.parse(decodeURIComponent(enc));alert(`${r.symbol} ${r.dir.toUpperCase()}\\n\\nScore: ${r.score}/100\\nStatus: ${r.type}\\nRSI: ${fmt(r.rsi)}\\nPrevious 1H High: ${fmt(r.h)}\\nPrevious 1H Low: ${fmt(r.l)}\\n\\nLogic: 1H level swept → ${r.type==="confirmed"?"closed candle confirmed":"confirmation still pending"}.`)}
+function canvas(c){let d=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;c.width=w*d;c.height=h*d;let x=c.getContext("2d");x.scale(d,d);return[x,w,h]}
+function chart(enc){let r=JSON.parse(decodeURIComponent(enc));$("modal").classList.add("open");$("mt").textContent=`${r.symbol} · ${r.dir.toUpperCase()} · ${r.type.toUpperCase()}`;$("mi").innerHTML=`<div><b>Score</b><span>${r.score}/100</span></div><div><b>RSI 14</b><span>${fmt(r.rsi)}</span></div><div><b>1H High</b><span>${fmt(r.h)}</span></div><div><b>1H Low</b><span>${fmt(r.l)}</span></div><div><b>Sweep</b><span>${r.dir==="bearish"?fmt(r.sweep.h):fmt(r.sweep.l)}</span></div><div><b>Wait</b><span>${r.wait} candle(s)</span></div>`;drawP(r);drawR(r)}
+function closeModal(){$("modal").classList.remove("open")}
+function drawP(r){let[x,w,h]=canvas($("pc")),p={l:52,r:12,t:12,b:24},d=r.candles.slice(-110),lo=Math.min(...d.map(z=>z.l),r.l),hi=Math.max(...d.map(z=>z.h),r.h),sy=v=>p.t+(hi-v)/(hi-lo||1)*(h-p.t-p.b),st=(w-p.l-p.r)/Math.max(1,d.length-1);x.clearRect(0,0,w,h);for(let k=0;k<5;k++){let y=p.t+k*(h-p.t-p.b)/4;x.strokeStyle="#182a37";x.beginPath();x.moveTo(p.l,y);x.lineTo(w-p.r,y);x.stroke()}d.forEach((c,i)=>{let xx=p.l+i*st;x.strokeStyle="#8da4b6";x.beginPath();x.moveTo(xx,sy(c.h));x.lineTo(xx,sy(c.l));x.stroke();x.strokeStyle=c.c>=c.o?"#35d39a":"#ff6473";x.lineWidth=Math.max(2,st*.55);x.beginPath();x.moveTo(xx,sy(c.o));x.lineTo(xx,sy(c.c));x.stroke();x.lineWidth=1});[[r.h,"1H HIGH"],[r.l,"1H LOW"]].forEach(q=>{let y=sy(q[0]);x.setLineDash([6,5]);x.strokeStyle="#68b4ff";x.beginPath();x.moveTo(p.l,y);x.lineTo(w-p.r,y);x.stroke();x.setLineDash([]);x.fillStyle="#8da4b6";x.fillText(q[1]+" "+fmt(q[0]),p.l+4,y-4)})}
+function drawR(r){let[x,w,h]=canvas($("rc")),p={l:35,r:10,t:10,b:18},a=RSI(r.candles).filter(x=>x!=null).slice(-110),sy=v=>p.t+(100-v)/100*(h-p.t-p.b),st=(w-p.l-p.r)/Math.max(1,a.length-1);x.clearRect(0,0,w,h);[70,50,30].forEach(v=>{let y=sy(v);x.strokeStyle="#253845";x.beginPath();x.moveTo(p.l,y);x.lineTo(w-p.r,y);x.stroke();x.fillStyle="#8da4b6";x.fillText(v,5,y+4)});x.strokeStyle="#f2c96d";x.lineWidth=2;x.beginPath();a.forEach((v,i)=>{let xx=p.l+i*st,yy=sy(v);i?x.lineTo(xx,yy):x.moveTo(xx,yy)});x.stroke();x.lineWidth=1)}
+$("scan").onclick=scan;$("dir").onchange=render;$("btcMode").onchange=render;$("coin").onchange=render;
+$("refresh").onchange=()=>{if(timer)clearInterval(timer);let m=Number($("refresh").value);if(m)timer=setInterval(scan,m*60000)};
+(async()=>{try{await markets();await scan()}catch(e){$("st").textContent="ERROR";$("strong").innerHTML=`<div class="empty">${e.message}</div>`}})();
+</script></body></html>

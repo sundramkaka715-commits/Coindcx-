@@ -1,8 +1,8 @@
 {
-  "name": "coindcx-1h-sweep-radar-v6",
-  "version": "6.0.0",
+  "name": "coindcx-1h-sweep-radar-v15-pro",
+  "version": "15.0.0",
   "private": true,
-  "description": "CoinDCX-only 1H sweep, confirmation, chart, RSI and strategy dashboard",
+  "description": "CoinDCX-only 1H liquidity sweep radar PRO with direction filters, BTC regime, charts, RSI, scoring and responsive UI",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
