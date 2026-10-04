@@ -3,52 +3,44 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CoinDCX 1H Rejection / Reclaim Scanner</title>
+<title>CoinDCX 1H Sweep + Confirmation Scanner</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header>
   <div class="brand">CoinDCX Scanner</div>
-  <h1>1H High / Low Rejection & Reclaim</h1>
-  <p>सिर्फ CoinDCX के active USDT spot coins • 5m / 10m scanner</p>
+  <h1>1H Sweep + Confirmation Scanner</h1>
+  <p>सिर्फ CoinDCX के active USDT spot coins • 5m / 10m • RSI</p>
 </header>
-
 <main>
   <section class="controls">
     <label>Scan candle
-      <select id="interval">
-        <option value="5m">5 Minutes</option>
-        <option value="10m">10 Minutes</option>
-      </select>
+      <select id="interval"><option value="5">5 Minutes</option><option value="10">10 Minutes</option></select>
     </label>
-    <label>Coin filter
-      <input id="filter" placeholder="BTC, ETH, SNX...">
-    </label>
+    <label>Coin filter <input id="filter" placeholder="BTC, ETH, SNX..."></label>
+    <label>RSI period <select id="rsiPeriod"><option value="14">14</option><option value="9">9</option><option value="21">21</option></select></label>
     <button id="scan">Scan Now</button>
   </section>
-
   <section class="stats">
-    <div><span>CoinDCX USDT markets</span><b id="total">0</b></div>
+    <div><span>CoinDCX USDT markets</span><b id="marketCount">0</b></div>
     <div><span>Scanned</span><b id="scanned">0</b></div>
     <div><span>Signals</span><b id="signals">0</b></div>
     <div><span>Status</span><b id="status">Loading…</b></div>
   </section>
-
   <section class="rule">
-    <h2>Exact Signal Rule</h2>
-    <p><strong class="bear">🔴 Bearish:</strong> Previous completed 1H candle का High reference होगा. 5m/10m candle पहले उस High के ऊपर जाए और उसी closed candle का Close उस High के नीचे हो → signal.</p>
-    <p><strong class="bull">🟢 Bullish:</strong> Previous completed 1H candle का Low reference होगा. 5m/10m candle पहले उस Low के नीचे जाए और उसी closed candle का Close उस Low के ऊपर हो → signal.</p>
-    <p><b>Wick + वापस close जरूरी है.</b> सिर्फ बाहर close होने पर signal नहीं आएगा. Running candle को signal में नहीं लिया जाएगा.</p>
+    <h2>Signal Rule</h2>
+    <p><strong class="bear">🔴 Bearish:</strong> Previous completed 1H High के ऊपर 5m/10m wick/sweep हो जाए. उसी candle या <b>1st, 2nd, 3rd या बाद की किसी closed candle</b> का Close 1H High के नीचे आते ही signal.</p>
+    <p><strong class="bull">🟢 Bullish:</strong> Previous completed 1H Low के नीचे wick/sweep हो जाए. उसी candle या <b>1st, 2nd, 3rd या बाद की किसी closed candle</b> का Close 1H Low के ऊपर आते ही signal.</p>
+    <p><b>Important:</b> Sweep के बाद price कुछ candles level के बाहर रह सकता है; setup तब तक active रहेगा जब तक confirmation नहीं मिलता. Running candle को signal नहीं माना जाएगा.</p>
   </section>
-
   <section class="tableWrap">
     <table>
-      <thead><tr><th>Time</th><th>Coin</th><th>Signal</th><th>Close</th><th>1H Level</th><th>Wick</th><th>Chart</th></tr></thead>
-      <tbody id="rows"><tr><td colspan="7">Scan Now दबाएँ.</td></tr></tbody>
+      <thead><tr><th>Time</th><th>Coin</th><th>Signal</th><th>RSI</th><th>Close</th><th>1H Level</th><th>Sweep</th><th>Confirm</th><th>Chart + RSI</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="9">Scan Now दबाएँ.</td></tr></tbody>
     </table>
   </section>
 </main>
-
+<div id="modal" class="modal hidden"><div class="modalCard"><button id="closeModal" class="close">✕</button><h2 id="chartTitle">Chart</h2><div class="chartBox"><canvas id="priceCanvas"></canvas></div><div class="rsiBox"><canvas id="rsiCanvas"></canvas></div><div id="chartInfo" class="chartInfo"></div></div></div>
 <footer>Data source: CoinDCX public market & candle APIs • API key की जरूरत नहीं</footer>
 <script src="app.js"></script>
 </body>
