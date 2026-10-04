@@ -1,85 +1,151 @@
 <!doctype html>
-<html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>CoinDCX 1H Sweep Radar V15 PRO</title>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CoinDCX 1H Sweep Radar PRO</title>
 <style>
-:root{--bg:#060d14;--p:#0d1721;--p2:#101e2b;--line:#223546;--txt:#edf6fb;--muted:#8da4b6;--g:#35d39a;--r:#ff6473;--y:#f2c96d;--b:#68b4ff}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,#102336 0,#060d14 42%);color:var(--txt);font-family:Inter,system-ui,Arial,sans-serif}.wrap{max-width:1550px;margin:auto;padding:16px}
-.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.brand h1{font-size:25px;margin:0}.brand p{margin:5px 0;color:var(--muted);font-size:12px}.pro{padding:8px 11px;border:1px solid #2d4559;border-radius:12px;background:#0c1823;font-size:11px}
-.controls{display:grid;grid-template-columns:1.15fr .7fr .85fr .9fr auto auto;gap:9px;margin-top:15px}.box,.stat,.card,.section{background:rgba(13,23,33,.94);border:1px solid var(--line);border-radius:14px}.box{padding:10px}.box label{display:block;font-size:10px;color:var(--muted);margin-bottom:6px}.box select,.box button{width:100%;background:#08131d;color:var(--txt);border:1px solid #2a4355;border-radius:9px;padding:9px;font-weight:750}.box button{cursor:pointer}.primary{background:#17354c!important}.stats{display:grid;grid-template-columns:repeat(7,1fr);gap:9px;margin-top:10px}.stat{padding:11px}.stat b{font-size:19px;display:block}.stat span{font-size:10px;color:var(--muted)}.trend{font-weight:850}.bull{color:var(--g)}.bear{color:var(--r)}.neutral{color:var(--y)}
-h2{font-size:15px;margin:20px 0 9px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.card{padding:13px}.row{display:flex;justify-content:space-between;align-items:center;gap:8px}.coin{font-weight:900;font-size:16px}.pill{font-size:10px;font-weight:900;padding:5px 8px;border:1px solid;border-radius:999px}.meta{color:var(--muted);font-size:11px;line-height:1.5}.score{font-size:25px;font-weight:950}.bar{height:5px;background:#182735;border-radius:9px;margin:8px 0}.bar i{display:block;height:100%;background:linear-gradient(90deg,#527fff,#35d39a);border-radius:9px}.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.chip{font-size:10px;padding:4px 6px;background:#0a151f;border:1px solid #223746;border-radius:7px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}.actions button{padding:8px;border:1px solid #294052;background:#0a151f;color:var(--txt);border-radius:8px;cursor:pointer}.empty{padding:18px;border:1px dashed #294052;border-radius:12px;color:var(--muted);text-align:center}.note{padding:12px;color:var(--muted);font-size:11px;line-height:1.6}
-.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:50;overflow:auto;padding:8px}.modal.open{display:block}.modalbox{max-width:1180px;margin:10px auto;background:#08121c;border:1px solid #2b4355;border-radius:16px;padding:13px}.close{float:right;background:#142432;color:white;border:1px solid #294052;border-radius:8px;padding:7px 11px;cursor:pointer}.chartbox{background:#050c12;border:1px solid #1d303e;border-radius:11px;padding:7px;margin-top:9px}canvas{width:100%;display:block}.price{height:420px}.rsi{height:145px}.info{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-top:10px}.info div{background:#0b1721;border:1px solid #1e3343;border-radius:8px;padding:8px}.info b{display:block;font-size:12px}.info span{font-size:9px;color:var(--muted)}
-@media(max-width:1050px){.controls{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:repeat(2,1fr)}.info{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:650px){.wrap{padding:9px}.brand h1{font-size:19px}.controls,.stats,.grid{grid-template-columns:1fr}.info{grid-template-columns:repeat(2,1fr)}.price{height:300px}.rsi{height:120px}.modal{padding:4px}.modalbox{margin:2px auto}}
-</style></head>
-<body><div class="wrap">
-<div class="top"><div class="brand"><h1>CoinDCX 1H Sweep Radar <b>V15 PRO</b></h1><p>Liquidity sweep · BTC regime · direction filter · chart · RSI · setup score</p></div><div class="pro">CoinDCX USDT only · Rule-based · No profit guarantee</div></div>
+*{box-sizing:border-box}body{margin:0;background:#071019;color:#edf6fb;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+.wrap{max-width:1500px;margin:auto;padding:16px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{font-size:24px;margin:0}.sub{color:#91a7b8;font-size:12px;margin-top:5px}.badge{padding:8px 11px;border:1px solid #294052;border-radius:10px;font-size:11px}
+.controls{display:grid;grid-template-columns:1.2fr .7fr .9fr .9fr auto;gap:9px;margin-top:16px}.box,.card,.stat,.notice{background:#0d1924;border:1px solid #223746;border-radius:13px}
+.box{padding:10px}.box label{display:block;color:#91a7b8;font-size:10px;margin-bottom:6px}.box select,.box button{width:100%;padding:10px;border-radius:9px;border:1px solid #2a4557;background:#08131c;color:#edf6fb;font-weight:800}.box button{cursor:pointer;background:#16354c}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin-top:10px}.stat{padding:11px}.stat b{font-size:19px;display:block}.stat span{font-size:10px;color:#91a7b8}
+h2{font-size:15px;margin:20px 0 9px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.card{padding:13px}.row{display:flex;justify-content:space-between;gap:8px;align-items:center}.coin{font-weight:900}.meta{font-size:11px;color:#91a7b8}.pill{font-size:10px;font-weight:900;border:1px solid;padding:5px 8px;border-radius:999px}.bull{color:#35d39a}.bear{color:#ff6473}.score{font-size:25px;font-weight:950}.bar{height:5px;background:#182733;border-radius:9px;margin:8px 0}.bar i{display:block;height:100%;background:#35d39a;border-radius:9px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}.actions button{padding:8px;background:#08131c;color:white;border:1px solid #294052;border-radius:8px}
+.notice{padding:14px;color:#b7c7d2;font-size:12px;line-height:1.55}.empty{padding:18px;text-align:center;border:1px dashed #294052;border-radius:11px;color:#91a7b8}
+.modal{display:none;position:fixed;inset:0;background:#000c;z-index:10;padding:8px;overflow:auto}.modal.open{display:block}.modalbox{max-width:1150px;margin:8px auto;background:#08131c;border:1px solid #294052;border-radius:15px;padding:12px}.close{float:right;background:#172734;color:white;border:1px solid #294052;padding:7px 10px;border-radius:8px}.chartbox{margin-top:10px;background:#050b10;border:1px solid #1c303d;border-radius:10px;padding:6px}canvas{width:100%;display:block}.price{height:410px}.rsi{height:140px}
+@media(max-width:1000px){.controls{grid-template-columns:repeat(3,1fr)}.stats{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.wrap{padding:9px}.controls,.stats,.grid{grid-template-columns:1fr}.price{height:300px}.rsi{height:120px}.modal{padding:3px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="top"><div><h1>CoinDCX 1H Sweep Radar <b>PRO</b></h1><div class="sub">V15.1 FIXED · CoinDCX USDT · 1H sweep + 5m/10m confirmation</div></div><div class="badge">📱 Mobile + 💻 Laptop</div></div>
+
+<div id="startup" class="notice" style="margin-top:14px">Loading dashboard…</div>
 
 <div class="controls">
-<div class="box"><label>YOUR DIRECTION</label><select id="dir"><option value="both">🟢🔴 BOTH</option><option value="bullish">🟢 BULLISH ONLY</option><option value="bearish">🔴 BEARISH ONLY</option></select></div>
+<div class="box"><label>DIRECTION</label><select id="direction"><option value="both">🟢🔴 BOTH</option><option value="bullish">🟢 BULLISH ONLY</option><option value="bearish">🔴 BEARISH ONLY</option></select></div>
 <div class="box"><label>TRIGGER</label><select id="tf"><option value="5">5 MIN</option><option value="10">10 MIN</option></select></div>
-<div class="box"><label>BTC 1H MODE</label><select id="btcMode"><option value="off">OFF</option><option value="aligned">BTC-ALIGNED ONLY</option></select></div>
+<div class="box"><label>BTC FILTER</label><select id="btcFilter"><option value="off">OFF</option><option value="aligned">BTC-ALIGNED ONLY</option></select></div>
 <div class="box"><label>COIN</label><select id="coin"><option>ALL COINS</option></select></div>
-<div class="box"><label>REFRESH</label><select id="refresh"><option value="0">MANUAL</option><option value="5">5 MIN</option><option value="10">10 MIN</option></select></div>
-<div class="box"><label>ACTION</label><button class="primary" id="scan">SCAN NOW</button></div>
+<div class="box"><label>ACTION</label><button id="scan">SCAN NOW</button></div>
 </div>
 
 <div class="stats">
-<div class="stat"><b id="bt">—</b><span>BTC 1H REGIME</span></div><div class="stat"><b id="mc">—</b><span>COINDCX USDT</span></div>
-<div class="stat"><b id="sc">0</b><span>SCANNED</span></div><div class="stat"><b id="cf">0</b><span>CONFIRMED</span></div>
-<div class="stat"><b id="wg">0</b><span>WATCHING</span></div><div class="stat"><b id="ap">0</b><span>A+ (85+)</span></div><div class="stat"><b id="st">READY</b><span>STATUS</span></div>
+<div class="stat"><b id="btc">—</b><span>BTC 1H</span></div><div class="stat"><b id="count">—</b><span>COINDCX USDT</span></div><div class="stat"><b id="scanned">0</b><span>SCANNED</span></div><div class="stat"><b id="confirmed">0</b><span>CONFIRMED</span></div><div class="stat"><b id="watching">0</b><span>WATCHING</span></div><div class="stat"><b id="status">READY</b><span>STATUS</span></div>
 </div>
 
-<h2>🏆 A+ / Strongest setups</h2><div id="strong" class="grid"></div>
-<h2>👀 Watching — sweep happened, confirmation pending</h2><div id="watch" class="grid"></div>
-<h2>✅ Confirmed signals</h2><div id="confirmed" class="grid"></div>
-<h2>🧠 PRO decision rules</h2><div class="section note">
-<b>Direction:</b> BOTH shows both sides; BULLISH ONLY shows only bullish; BEARISH ONLY shows only bearish.
-<b>BTC-aligned:</b> when enabled, only the direction matching the latest completed BTC 1H candle is shown.
-The scanner uses the previous completed 1H candle as the reference. A closed 5m/10m candle can sweep the level and confirm on the same candle or a later closed candle. Score is a rule-based quality score, not a prediction.
-</div>
+<h2>🏆 Strongest</h2><div id="strong" class="grid"></div>
+<h2>👀 Watching / Pre-signal</h2><div id="watch" class="grid"></div>
+<h2>✅ Confirmed</h2><div id="confirmedList" class="grid"></div>
+<h2>ℹ️ Scanner</h2><div class="notice">BULLISH ONLY = only bullish setups. BEARISH ONLY = only bearish setups. BOTH = both. BTC-ALIGNED ONLY follows the latest completed BTC 1H candle. The score is rule-based, not a profit prediction.</div>
 </div>
 
-<div id="modal" class="modal"><div class="modalbox"><button class="close" onclick="closeModal()">Close</button><h2 id="mt">Chart</h2>
-<div class="info" id="mi"></div><div class="chartbox"><canvas id="pc" class="price"></canvas></div>
-<div class="chartbox"><canvas id="rc" class="rsi"></canvas></div></div></div>
+<div id="modal" class="modal"><div class="modalbox"><button class="close" onclick="closeChart()">Close</button><h2 id="chartTitle">Chart</h2><div id="chartInfo" class="notice"></div><div class="chartbox"><canvas id="price" class="price"></canvas></div><div class="chartbox"><canvas id="rsi" class="rsi"></canvas></div></div></div>
 
 <script>
-const $=x=>document.getElementById(x);let symbols=[],all=[],busy=false,timer=null;
-const sleep=m=>new Promise(r=>setTimeout(r,m));const n=x=>Number(x||0);
-async function J(u){let r=await fetch(u);if(!r.ok)throw Error("API "+r.status);return r.json()}
-function C(x){return{t:n(x.time),o:n(x.open),h:n(x.high),l:n(x.low),c:n(x.close),v:n(x.volume)}}
-function agg(raw,m){let a=raw.map(C).sort((x,y)=>x.t-y.t),ms=m*60000,g=new Map(),out=[];
- for(let x of a){let k=Math.floor(x.t/ms)*ms;if(!g.has(k))g.set(k,[]);g.get(k).push(x)}
- for(let[t,z]of g){if(z.length<m-1)continue;out.push({t,o:z[0].o,h:Math.max(...z.map(x=>x.h)),l:Math.min(...z.map(x=>x.l)),c:z[z.length-1].c,v:z.reduce((s,x)=>s+x.v,0)})}return out}
-function RSI(a,N=14){let o=Array(a.length).fill(null);if(a.length<=N)return o;let G=0,L=0;
- for(let i=1;i<=N;i++){let d=a[i].c-a[i-1].c;if(d>=0)G+=d;else L-=d}let ag=G/N,al=L/N;o[N]=al?100-100/(1+ag/al):100;
- for(let i=N+1;i<a.length;i++){let d=a[i].c-a[i-1].c,g=Math.max(0,d),l=Math.max(0,-d);ag=(ag*(N-1)+g)/N;al=(al*(N-1)+l)/N;o[i]=al?100-100/(1+ag/al):100}return o}
+(function(){
+"use strict";
+var symbols=[],results=[],busy=false;
+function $(id){return document.getElementById(id)}
+function n(v){return Number(v||0)}
 function fmt(v){return Number.isFinite(Number(v))?Number(v).toLocaleString(undefined,{maximumSignificantDigits:7}):"—"}
-function score(s,c){let rr=Math.max(1,s.h-s.l),depth=s.dir==="bearish"?Math.max(0,s.sweep.h-s.h):Math.max(0,s.l-s.sweep.l),body=Math.abs(s.confirm.c-s.confirm.o)/Math.max(1,s.confirm.h-s.confirm.l),v=c.slice(-20).reduce((a,x)=>a+x.v,0)/Math.max(1,Math.min(20,c.length)),z=55;
- if(body>.55)z+=10;else if(body>.35)z+=5;if(depth/rr>.1)z+=10;else if(depth/rr>.03)z+=5;if(s.wait===0)z+=10;else if(s.wait===1)z+=6;else if(s.wait<=3)z+=3;if(s.confirm.v>v*1.5)z+=5;else if(s.confirm.v>v*1.1)z+=3;return Math.min(100,z)}
-function analyze(hraw,mraw,sym){let now=Date.now(),h=hraw.map(C).sort((a,b)=>a.t-b.t),H=h.filter(x=>x.t+3600000<=now);if(H.length<2)return[];
- let ref=H[H.length-1],m=agg(mraw,Number($("tf").value)).filter(x=>x.t>=ref.t+3600000&&x.t+Number($("tf").value)*60000<=now),out=[];if(!m.length)return[];
- for(let dir of["bearish","bullish"]){let sw=null;for(let i=0;i<m.length;i++){if(dir==="bearish"&&m[i].h>ref.h){sw={i,x:m[i]};break}if(dir==="bullish"&&m[i].l<ref.l){sw={i,x:m[i]};break}}if(!sw)continue;
-  let found=null;for(let j=sw.i;j<m.length;j++){let ok=dir==="bearish"?m[j].c<ref.h:m[j].c>ref.l;if(ok){found={j,x:m[j]};break}}
-  let base={symbol:sym,dir,h:ref.h,l:ref.l,sweep:sw.x,candles:m,wait:found?found.j-sw.i:m.length-1-sw.i,type:found?"confirmed":"watching",confirm:found?found.x:null};
-  base.rsi=RSI(m).filter(x=>x!=null).at(-1);base.score=found?score(base,m):Math.min(84,62+Math.min(18,base.wait*2));out.push(base)}
- return out}
-async function one(sym){try{let pair="B-"+sym.slice(0,-4)+"_USDT",[h,m]=await Promise.all([J(`/api/candles?pair=${encodeURIComponent(pair)}&interval=1h&limit=30`),J(`/api/candles?pair=${encodeURIComponent(pair)}&interval=1m&limit=700`)]);return analyze(h,m,sym)}catch{return[]}}
-async function btc(){try{let a=(await J("/api/candles?pair=B-BTC_USDT&interval=1h&limit=4")).map(C).sort((x,y)=>x.t-y.t).filter(x=>x.t+3600000<=Date.now()),x=a.at(-1),d=x.c>x.o?"bullish":x.c<x.o?"bearish":"neutral";$("bt").textContent=d.toUpperCase();$("bt").className=d;return d}catch{$("bt").textContent="—";return null}}
-function allow(r){let d=$("dir").value;if(d!=="both"&&r.dir!==d)return false;if($("coin").value!=="ALL COINS"&&r.symbol!==$("coin").value)return false;if($("btcMode").value==="aligned"){let b=$("bt").textContent.toLowerCase();if((b==="bullish"||b==="bearish")&&r.dir!==b)return false}return true}
-function card(r){let bull=r.dir==="bullish",cls=bull?"bull":"bear",status=r.type==="confirmed"?"CONFIRMED":"WATCHING";return `<div class="card"><div class="row"><span class="coin">${r.symbol}</span><span class="pill ${cls}">${bull?"🟢 BULLISH":"🔴 BEARISH"}</span></div><div class="row" style="margin-top:8px"><span class="meta">${status} · ${r.wait} candle(s)</span><span class="score">${r.score}</span></div><div class="bar"><i style="width:${r.score}%"></i></div><div class="chips"><span class="chip">RSI ${fmt(r.rsi)}</span><span class="chip">1H H ${fmt(r.h)}</span><span class="chip">1H L ${fmt(r.l)}</span></div><div class="actions"><button onclick="chart('${encodeURIComponent(JSON.stringify(r))}')">📊 Full Chart</button><button onclick="explain('${encodeURIComponent(JSON.stringify(r))}')">🧠 Why?</button></div></div>`}
-function render(){let a=all.filter(allow).sort((x,y)=>y.score-x.score),s=a.filter(x=>x.score>=85),w=a.filter(x=>x.type==="watching"),c=a.filter(x=>x.type==="confirmed");$("strong").innerHTML=s.length?s.slice(0,15).map(card).join(""):'<div class="empty">No A+ setup for this filter.</div>';$("watch").innerHTML=w.length?w.map(card).join(""):'<div class="empty">No watching setup.</div>';$("confirmed").innerHTML=c.length?c.map(card).join(""):'<div class="empty">No confirmed setup.</div>';$("cf").textContent=c.length;$("wg").textContent=w.length;$("ap").textContent=s.length}
-async function markets(){let d=await J("/api/markets");symbols=d.symbols;$("mc").textContent=d.count;$("coin").innerHTML='<option>ALL COINS</option>'+symbols.map(x=>`<option>${x}</option>`).join("")}
-async function scan(){if(busy)return;busy=true;$("st").textContent="SCANNING";all=[];let bt=await btc();let list=$("coin").value==="ALL COINS"?symbols:[$("coin").value];
- for(let i=0;i<list.length;i++){let rs=await one(list[i]);all.push(...rs);$("sc").textContent=i+1;if(i%4===3)render()}render();$("st").textContent="DONE";busy=false}
-function explain(enc){let r=JSON.parse(decodeURIComponent(enc));alert(`${r.symbol} ${r.dir.toUpperCase()}\\n\\nScore: ${r.score}/100\\nStatus: ${r.type}\\nRSI: ${fmt(r.rsi)}\\nPrevious 1H High: ${fmt(r.h)}\\nPrevious 1H Low: ${fmt(r.l)}\\n\\nLogic: 1H level swept → ${r.type==="confirmed"?"closed candle confirmed":"confirmation still pending"}.`)}
-function canvas(c){let d=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;c.width=w*d;c.height=h*d;let x=c.getContext("2d");x.scale(d,d);return[x,w,h]}
-function chart(enc){let r=JSON.parse(decodeURIComponent(enc));$("modal").classList.add("open");$("mt").textContent=`${r.symbol} · ${r.dir.toUpperCase()} · ${r.type.toUpperCase()}`;$("mi").innerHTML=`<div><b>Score</b><span>${r.score}/100</span></div><div><b>RSI 14</b><span>${fmt(r.rsi)}</span></div><div><b>1H High</b><span>${fmt(r.h)}</span></div><div><b>1H Low</b><span>${fmt(r.l)}</span></div><div><b>Sweep</b><span>${r.dir==="bearish"?fmt(r.sweep.h):fmt(r.sweep.l)}</span></div><div><b>Wait</b><span>${r.wait} candle(s)</span></div>`;drawP(r);drawR(r)}
-function closeModal(){$("modal").classList.remove("open")}
-function drawP(r){let[x,w,h]=canvas($("pc")),p={l:52,r:12,t:12,b:24},d=r.candles.slice(-110),lo=Math.min(...d.map(z=>z.l),r.l),hi=Math.max(...d.map(z=>z.h),r.h),sy=v=>p.t+(hi-v)/(hi-lo||1)*(h-p.t-p.b),st=(w-p.l-p.r)/Math.max(1,d.length-1);x.clearRect(0,0,w,h);for(let k=0;k<5;k++){let y=p.t+k*(h-p.t-p.b)/4;x.strokeStyle="#182a37";x.beginPath();x.moveTo(p.l,y);x.lineTo(w-p.r,y);x.stroke()}d.forEach((c,i)=>{let xx=p.l+i*st;x.strokeStyle="#8da4b6";x.beginPath();x.moveTo(xx,sy(c.h));x.lineTo(xx,sy(c.l));x.stroke();x.strokeStyle=c.c>=c.o?"#35d39a":"#ff6473";x.lineWidth=Math.max(2,st*.55);x.beginPath();x.moveTo(xx,sy(c.o));x.lineTo(xx,sy(c.c));x.stroke();x.lineWidth=1});[[r.h,"1H HIGH"],[r.l,"1H LOW"]].forEach(q=>{let y=sy(q[0]);x.setLineDash([6,5]);x.strokeStyle="#68b4ff";x.beginPath();x.moveTo(p.l,y);x.lineTo(w-p.r,y);x.stroke();x.setLineDash([]);x.fillStyle="#8da4b6";x.fillText(q[1]+" "+fmt(q[0]),p.l+4,y-4)})}
-function drawR(r){let[x,w,h]=canvas($("rc")),p={l:35,r:10,t:10,b:18},a=RSI(r.candles).filter(x=>x!=null).slice(-110),sy=v=>p.t+(100-v)/100*(h-p.t-p.b),st=(w-p.l-p.r)/Math.max(1,a.length-1);x.clearRect(0,0,w,h);[70,50,30].forEach(v=>{let y=sy(v);x.strokeStyle="#253845";x.beginPath();x.moveTo(p.l,y);x.lineTo(w-p.r,y);x.stroke();x.fillStyle="#8da4b6";x.fillText(v,5,y+4)});x.strokeStyle="#f2c96d";x.lineWidth=2;x.beginPath();a.forEach((v,i)=>{let xx=p.l+i*st,yy=sy(v);i?x.lineTo(xx,yy):x.moveTo(xx,yy)});x.stroke();x.lineWidth=1)}
-$("scan").onclick=scan;$("dir").onchange=render;$("btcMode").onchange=render;$("coin").onchange=render;
-$("refresh").onchange=()=>{if(timer)clearInterval(timer);let m=Number($("refresh").value);if(m)timer=setInterval(scan,m*60000)};
-(async()=>{try{await markets();await scan()}catch(e){$("st").textContent="ERROR";$("strong").innerHTML=`<div class="empty">${e.message}</div>`}})();
-</script></body></html>
+function candle(x){return{t:n(x.time),o:n(x.open),h:n(x.high),l:n(x.low),c:n(x.close),v:n(x.volume)}}
+function get(url){return fetch(url).then(function(r){if(!r.ok)throw Error("Request failed: "+r.status);return r.json()})}
+function agg(raw,m){
+ var a=raw.map(candle).sort(function(x,y){return x.t-y.t}),ms=m*60000,g={},out=[];
+ a.forEach(function(x){var k=Math.floor(x.t/ms)*ms;(g[k]||(g[k]=[])).push(x)});
+ Object.keys(g).forEach(function(k){var z=g[k];if(z.length<m-1)return;out.push({t:+k,o:z[0].o,h:Math.max.apply(null,z.map(function(x){return x.h})),l:Math.min.apply(null,z.map(function(x){return x.l})),c:z[z.length-1].c,v:z.reduce(function(s,x){return s+x.v},0)})});
+ return out.sort(function(a,b){return a.t-b.t})
+}
+function rsi(a,N){
+ N=N||14;var o=new Array(a.length).fill(null);if(a.length<=N)return o;var G=0,L=0,i,d;
+ for(i=1;i<=N;i++){d=a[i].c-a[i-1].c;if(d>=0)G+=d;else L-=d}
+ var ag=G/N,al=L/N;o[N]=al?100-100/(1+ag/al):100;
+ for(i=N+1;i<a.length;i++){d=a[i].c-a[i-1].c;var g=Math.max(0,d),l=Math.max(0,-d);ag=(ag*(N-1)+g)/N;al=(al*(N-1)+l)/N;o[i]=al?100-100/(1+ag/al):100}
+ return o
+}
+function score(s,c){
+ var range=Math.max(1,s.h-s.l),depth=s.dir==="bearish"?Math.max(0,s.sweep.h-s.h):Math.max(0,s.l-s.sweep.l);
+ var body=Math.abs(s.confirm.c-s.confirm.o)/Math.max(1,s.confirm.h-s.confirm.l),avg=c.slice(-20).reduce(function(a,x){return a+x.v},0)/Math.max(1,Math.min(20,c.length)),z=55;
+ if(body>.55)z+=10;else if(body>.35)z+=5;if(depth/range>.1)z+=10;else if(depth/range>.03)z+=5;if(s.wait===0)z+=10;else if(s.wait===1)z+=6;else if(s.wait<=3)z+=3;if(s.confirm.v>avg*1.5)z+=5;else if(s.confirm.v>avg*1.1)z+=3;return Math.min(100,z)
+}
+function analyze(hraw,mraw,sym){
+ var now=Date.now(),h=hraw.map(candle).sort(function(a,b){return a.t-b.t}),H=h.filter(function(x){return x.t+3600000<=now});if(H.length<2)return[];
+ var ref=H[H.length-1],m=agg(mraw,+$("tf").value).filter(function(x){return x.t>=ref.t+3600000&&x.t+$("tf").value*60000<=now}),out=[];
+ ["bearish","bullish"].forEach(function(dir){
+  var sw=null,i;
+  for(i=0;i<m.length;i++){if(dir==="bearish"&&m[i].h>ref.h){sw={i:i,x:m[i]};break}if(dir==="bullish"&&m[i].l<ref.l){sw={i:i,x:m[i]};break}}
+  if(!sw)return;
+  var found=null;
+  for(var j=sw.i;j<m.length;j++){var ok=dir==="bearish"?m[j].c<ref.h:m[j].c>ref.l;if(ok){found={j:j,x:m[j]};break}}
+  var s={symbol:sym,dir:dir,h:ref.h,l:ref.l,sweep:sw.x,candles:m,wait:found?found.j-sw.i:m.length-1-sw.i,type:found?"confirmed":"watching",confirm:found?found.x:null};
+  s.rsi=rsi(m).filter(function(x){return x!==null}).slice(-1)[0];s.score=found?score(s,m):Math.min(84,62+Math.min(18,s.wait*2));out.push(s)
+ });
+ return out
+}
+function scanOne(sym){
+ var pair="B-"+sym.slice(0,-4)+"_USDT";
+ return Promise.all([get("/api/candles?pair="+encodeURIComponent(pair)+"&interval=1h&limit=30"),get("/api/candles?pair="+encodeURIComponent(pair)+"&interval=1m&limit=700")]).then(function(x){return analyze(x[0],x[1],sym)}).catch(function(){return[]})
+}
+function btcTrend(){
+ return get("/api/candles?pair=B-BTC_USDT&interval=1h&limit=4").then(function(raw){
+  var a=raw.map(candle).sort(function(x,y){return x.t-y.t}).filter(function(x){return x.t+3600000<=Date.now()}),x=a[a.length-1];
+  var d=x?(x.c>x.o?"bullish":x.c<x.o?"bearish":"neutral"):null;$("btc").textContent=d?d.toUpperCase():"—";$("btc").className=d||"";return d
+ }).catch(function(){$("btc").textContent="—";return null})
+}
+function allowed(r){
+ var d=$("direction").value;if(d!=="both"&&r.dir!==d)return false;
+ if($("coin").value!=="ALL COINS"&&$("coin").value!==r.symbol)return false;
+ if($("btcFilter").value==="aligned"){var b=$("btc").textContent.toLowerCase();if((b==="bullish"||b==="bearish")&&r.dir!==b)return false}
+ return true
+}
+function card(r){
+ var bull=r.dir==="bullish",payload=encodeURIComponent(JSON.stringify(r));
+ return '<div class="card"><div class="row"><span class="coin">'+r.symbol+'</span><span class="pill '+(bull?"bull":"bear")+'">'+(bull?"🟢 BULLISH":"🔴 BEARISH")+'</span></div><div class="row" style="margin-top:8px"><span class="meta">'+(r.type==="confirmed"?"CONFIRMED":"WATCHING")+' · wait '+r.wait+'</span><span class="score">'+r.score+'</span></div><div class="bar"><i style="width:'+r.score+'%"></i></div><div class="meta">RSI 14: '+fmt(r.rsi)+' · 1H High: '+fmt(r.h)+' · 1H Low: '+fmt(r.l)+'</div><div class="actions"><button data-chart="'+payload+'">📊 Chart</button><button data-why="'+payload+'">🧠 Why</button></div></div>'
+}
+function render(){
+ var a=results.filter(allowed).sort(function(x,y){return y.score-x.score}),s=a.filter(function(x){return x.score>=85}),w=a.filter(function(x){return x.type==="watching"}),c=a.filter(function(x){return x.type==="confirmed"});
+ $("strong").innerHTML=s.length?s.slice(0,15).map(card).join(""):'<div class="empty">No strong setup.</div>';
+ $("watch").innerHTML=w.length?w.map(card).join(""):'<div class="empty">No watching setup.</div>';
+ $("confirmedList").innerHTML=c.length?c.map(card).join(""):'<div class="empty">No confirmed setup.</div>';
+ $("confirmed").textContent=c.length;$("watching").textContent=w.length;
+ document.querySelectorAll("[data-chart]").forEach(function(b){b.onclick=function(){openChart(decodeURIComponent(b.getAttribute("data-chart")))}})
+ document.querySelectorAll("[data-why]").forEach(function(b){b.onclick=function(){var r=JSON.parse(decodeURIComponent(b.getAttribute("data-why")));alert(r.symbol+" "+r.dir.toUpperCase()+"\n\nScore: "+r.score+"/100\nStatus: "+r.type+"\nRSI: "+fmt(r.rsi)+"\nPrevious 1H High: "+fmt(r.h)+"\nPrevious 1H Low: "+fmt(r.l))}})
+}
+function loadMarkets(){
+ return get("/api/markets").then(function(d){
+  symbols=d.symbols||[];$("count").textContent=d.count||symbols.length;
+  $("coin").innerHTML='<option>ALL COINS</option>'+symbols.map(function(s){return"<option>"+s+"</option>"}).join("")
+ })
+}
+function scan(){
+ if(busy)return;busy=true;$("status").textContent="SCANNING";$("startup").textContent="Scanning CoinDCX markets…";results=[];
+ return btcTrend().then(function(){var list=$("coin").value==="ALL COINS"?symbols:[$("coin").value],p=Promise.resolve();
+  list.forEach(function(sym,i){p=p.then(function(){return scanOne(sym)}).then(function(rs){results=results.concat(rs);$("scanned").textContent=i+1;if(i%4===3)render()})});
+  return p
+ }).then(function(){render();$("status").textContent="DONE";$("startup").textContent="Dashboard ready. Choose BULLISH, BEARISH or BOTH.";busy=false})
+ .catch(function(e){$("status").textContent="ERROR";$("startup").textContent="Error: "+e.message+" — check Render logs and /health.";busy=false})
+}
+function openChart(enc){
+ var r=JSON.parse(enc);$("modal").classList.add("open");$("chartTitle").textContent=r.symbol+" · "+r.dir.toUpperCase()+" · "+r.type.toUpperCase();
+ $("chartInfo").textContent="Score "+r.score+"/100 · RSI "+fmt(r.rsi)+" · Previous 1H High "+fmt(r.h)+" · Low "+fmt(r.l);drawPrice(r);drawRSI(r)
+}
+window.closeChart=function(){$("modal").classList.remove("open")}
+function setup(c){var d=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;c.width=w*d;c.height=h*d;var x=c.getContext("2d");x.scale(d,d);return[x,w,h]}
+function drawPrice(r){
+ var z=setup($("price")),x=z[0],w=z[1],h=z[2],p={l:48,r:10,t:12,b:20},d=r.candles.slice(-100),lo=Math.min.apply(null,d.map(function(a){return a.l}).concat([r.l])),hi=Math.max.apply(null,d.map(function(a){return a.h}).concat([r.h])),sy=function(v){return p.t+(hi-v)/(hi-lo||1)*(h-p.t-p.b)},st=(w-p.l-p.r)/Math.max(1,d.length-1);
+ x.clearRect(0,0,w,h);d.forEach(function(c,i){var xx=p.l+i*st;x.strokeStyle="#8da4b6";x.beginPath();x.moveTo(xx,sy(c.h));x.lineTo(xx,sy(c.l));x.stroke();x.strokeStyle=c.c>=c.o?"#35d39a":"#ff6473";x.lineWidth=Math.max(2,st*.55);x.beginPath();x.moveTo(xx,sy(c.o));x.lineTo(xx,sy(c.c));x.stroke();x.lineWidth=1});
+ [[r.h,"1H HIGH"],[r.l,"1H LOW"]].forEach(function(q){var y=sy(q[0]);x.setLineDash([6,5]);x.strokeStyle="#68b4ff";x.beginPath();x.moveTo(p.l,y);x.lineTo(w-p.r,y);x.stroke();x.setLineDash([]);x.fillStyle="#91a7b8";x.fillText(q[1]+" "+fmt(q[0]),p.l+3,y-3)})
+}
+function drawRSI(r){
+ var z=setup($("rsi")),x=z[0],w=z[1],h=z[2],p={l:32,r:8,t:8,b:18},a=rsi(r.candles).filter(function(v){return v!==null}).slice(-100),sy=function(v){return p.t+(100-v)/100*(h-p.t-p.b)},st=(w-p.l-p.r)/Math.max(1,a.length-1);
+ x.clearRect(0,0,w,h);[70,50,30].forEach(function(v){var y=sy(v);x.strokeStyle="#263845";x.beginPath();x.moveTo(p.l,y);x.lineTo(w-p.r,y);x.stroke();x.fillStyle="#91a7b8";x.fillText(v,5,y+4)});x.strokeStyle="#f2c96d";x.lineWidth=2;x.beginPath();a.forEach(function(v,i){var xx=p.l+i*st,yy=sy(v);i?x.lineTo(xx,yy):x.moveTo(xx,yy)});x.stroke();x.lineWidth=1
+}
+$("scan").onclick=scan;$("direction").onchange=render;$("btcFilter").onchange=render;$("coin").onchange=render;
+$("startup").textContent="Starting…";
+loadMarkets().then(scan).catch(function(e){$("startup").textContent="Startup error: "+e.message+" . If this remains, open /health.";});
+})();
+</script>
+</body></html>
