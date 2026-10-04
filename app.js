@@ -1,228 +1,143 @@
-const els = {
-  scanBtn: document.getElementById("scanBtn"),
-  scanTf: document.getElementById("scanTf"),
-  market: document.getElementById("market"),
-  search: document.getElementById("search"),
-  autoRefresh: document.getElementById("autoRefresh"),
-  results: document.getElementById("results"),
-  scanned: document.getElementById("scanned"),
-  signals: document.getElementById("signals"),
-  lastScan: document.getElementById("lastScan"),
-  resultNote: document.getElementById("resultNote"),
-  statusDot: document.getElementById("statusDot"),
-  statusText: document.getElementById("statusText")
-};
-
+const $ = id => document.getElementById(id);
 let symbols = [];
-let timer = null;
+let results = [];
 
-function setStatus(type, text) {
-  els.statusDot.className = "dot " + (type || "");
-  els.statusText.textContent = text;
+function num(n){
+  n = Number(n);
+  if(n >= 1000) return n.toFixed(2);
+  if(n >= 1) return n.toFixed(4);
+  if(n >= 0.1) return n.toFixed(5);
+  return n.toPrecision(7);
 }
-
-function fmtPrice(n) {
-  if (!Number.isFinite(n)) return "—";
-  if (n >= 1000) return n.toFixed(2);
-  if (n >= 1) return n.toFixed(4);
-  if (n >= 0.1) return n.toFixed(5);
-  if (n >= 0.01) return n.toFixed(6);
-  return n.toPrecision(6);
-}
-
-function fmtTime(ms) {
-  return new Date(ms).toLocaleString("en-IN", {
-    day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"
-  });
-}
-
-async function getJson(url) {
-  const r = await fetch(url, {cache:"no-store"});
-  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+function fmt(t){return new Date(Number(t)).toLocaleString("en-IN",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}
+async function api(url){
+  const r = await fetch(url);
+  if(!r.ok) throw new Error(await r.text());
   return r.json();
 }
 
-async function loadSymbols() {
-  const base = els.market.value === "futures"
-    ? "https://fapi.binance.com"
-    : "https://api.binance.com";
-
-  const path = els.market.value === "futures"
-    ? "/fapi/v1/exchangeInfo"
-    : "/api/v3/exchangeInfo";
-
-  const data = await getJson(base + path);
-  symbols = data.symbols
-    .filter(s => s.status === "TRADING" && s.quoteAsset === "USDT")
-    .map(s => s.symbol)
-    .sort();
-  return {base, symbols};
+// CoinDCX candles are returned newest-first; normalize to oldest-first.
+function normalize(a){
+  return [...a].sort((x,y)=>Number(x.time)-Number(y.time));
 }
 
-async function klines(base, symbol, interval, limit=4) {
-  const path = els.market.value === "futures" ? "/fapi/v1/klines" : "/api/v3/klines";
-  const url = `${base}${path}?symbol=${symbol}&interval=${interval}&limit=${limit}`;
-  return getJson(url);
+// Build a 10-minute candle from two closed 5-minute candles.
+function make10(c5){
+  const out=[];
+  for(let i=0;i+1<c5.length;i+=2){
+    const a=c5[i],b=c5[i+1];
+    if(Math.floor(Number(a.time)/600000)!==Math.floor(Number(b.time)/600000)) continue;
+    out.push({
+      time:Number(a.time),
+      open:Number(a.open),
+      high:Math.max(Number(a.high),Number(b.high)),
+      low:Math.min(Number(a.low),Number(b.low)),
+      close:Number(b.close),
+      end:Number(b.time)+300000
+    });
+  }
+  return out;
 }
 
-/*
-  IMPORTANT:
-  We compare the latest CLOSED scan candle with the PREVIOUS completed 1H candle.
-  A candle is [openTime, open, high, low, close, ... closeTime].
-  Binance returns the newest candle too, but that candle may still be running.
-  We therefore use index -2 for the scan candle and index -2 for the 1H candle
-  when the latest candle is still open.
-*/
-async function scanSymbol(base, symbol, scanTf) {
-  const [h1, scan] = await Promise.all([
-    klines(base, symbol, "1h", 4),
-    klines(base, symbol, scanTf, 6)
+async function check(symbol, tf){
+  const pair = `B-${symbol.slice(0,-4)}_USDT`;
+  const [hRaw,sRaw] = await Promise.all([
+    api(`/api/candles?pair=${encodeURIComponent(pair)}&interval=1h&limit=4`),
+    api(`/api/candles?pair=${encodeURIComponent(pair)}&interval=5m&limit=10`)
   ]);
+  const h = normalize(hRaw);
+  const s5 = normalize(sRaw);
+  const now=Date.now();
 
-  if (h1.length < 3 || scan.length < 3) return null;
+  const closedH = h.filter(c=>Number(c.time)+3600000<=now);
+  if(closedH.length<1) return null;
+  const ref=closedH[closedH.length-1];
 
-  const now = Date.now();
+  let small;
+  if(tf==="5m"){
+    small=s5.filter(c=>Number(c.time)+300000<=now).map(c=>({...c,time:Number(c.time),end:Number(c.time)+300000}));
+  }else{
+    const closed5=s5.filter(c=>Number(c.time)+300000<=now).map(c=>({...c,time:Number(c.time),end:Number(c.time)+300000}));
+    small=make10(closed5).filter(c=>c.end<=now);
+  }
+  if(!small.length) return null;
 
-  // Last fully closed 1H candle.
-  const h1Closed = h1.filter(k => Number(k[6]) < now);
-  // Last fully closed scan candle.
-  const scanClosed = scan.filter(k => Number(k[6]) < now);
+  // Only test the latest closed scan candle, and only after the reference 1H candle closed.
+  const c=small[small.length-1];
+  if(c.end<=Number(ref.time)+3600000) return null;
 
-  if (!h1Closed.length || !scanClosed.length) return null;
-
-  const hour = h1Closed[h1Closed.length - 1];
-  const c = scanClosed[scanClosed.length - 1];
-
-  const hourHigh = Number(hour[2]);
-  const hourLow = Number(hour[3]);
-
-  const open = Number(c[1]);
-  const high = Number(c[2]);
-  const low = Number(c[3]);
-  const close = Number(c[4]);
-
-  // Avoid using a scan candle that belongs to a later 1H candle than the
-  // selected completed 1H reference. It is valid only if its close is after
-  // the reference hour candle close.
-  if (Number(c[0]) <= Number(hour[6])) return null;
-
-  // EXACT USER RULE:
-  // Bearish: 5m/10m candle goes ABOVE previous 1H High,
-  // then closes BACK BELOW that 1H High.
-  const bearish = high > hourHigh && close < hourHigh;
-
-  // Bullish: 5m/10m candle goes BELOW previous 1H Low,
-  // then closes BACK ABOVE that 1H Low.
-  const bullish = low < hourLow && close > hourLow;
-
-  if (!bearish && !bullish) return null;
-
-  const type = bearish ? "🔴 BEARISH REJECTION" : "🟢 BULLISH RECLAIM";
-  const level = bearish ? hourHigh : hourLow;
-  const wick = bearish ? high : low;
+  const H=Number(ref.high), L=Number(ref.low);
+  const hi=Number(c.high), lo=Number(c.low), close=Number(c.close);
+  const bearish=hi>H && close<H;
+  const bullish=lo<L && close>L;
+  if(!bearish&&!bullish) return null;
 
   return {
     symbol,
-    type,
-    open, high, low, close,
-    level,
-    wick,
-    time: Number(c[6]),
-    hourOpenTime: Number(hour[0])
+    time:c.end,
+    bull:bullish,
+    signal:bullish?"BULLISH RECLAIM":"BEARISH REJECTION",
+    close,
+    level:bullish?L:H,
+    wick:bullish?lo:hi
   };
 }
 
-function render(rows) {
-  const q = els.search.value.trim().toUpperCase();
-  const filtered = q ? rows.filter(x => x.symbol.includes(q)) : rows;
-
-  els.results.innerHTML = "";
-  if (!filtered.length) {
-    els.results.innerHTML = `<tr><td colspan="7" class="empty">इस scan में कोई signal नहीं मिला.</td></tr>`;
+function draw(){
+  const q=$("filter").value.trim().toUpperCase();
+  const rows=results.filter(x=>!q||x.symbol.includes(q)).sort((a,b)=>b.time-a.time);
+  $("rows").innerHTML="";
+  if(!rows.length){
+    $("rows").innerHTML='<tr><td colspan="7">इस scan में कोई signal नहीं मिला.</td></tr>';
     return;
   }
-
-  for (const r of filtered.sort((a,b) => b.time - a.time)) {
-    const bull = r.type.startsWith("BULLISH");
-    const url = `https://www.tradingview.com/chart/?symbol=BINANCE:${r.symbol}.P`;
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${fmtTime(r.time)}</td>
-      <td class="symbol">${r.symbol}</td>
-      <td><span class="badge ${bull ? "bull" : "bear"}">${r.type}</span></td>
-      <td>${fmtPrice(r.close)}</td>
-      <td>${fmtPrice(r.level)}</td>
-      <td>${fmtPrice(r.wick)}</td>
-      <td><a class="chart" href="${url}" target="_blank" rel="noopener">TradingView ↗</a></td>
-    `;
-    els.results.appendChild(row);
+  for(const r of rows){
+    const tr=document.createElement("tr");
+    const chart=`https://coindcx.com/trade/${r.symbol}`;
+    tr.innerHTML=`<td>${fmt(r.time)}</td>
+      <td><b>${r.symbol.slice(0,-4)}/USDT</b></td>
+      <td class="${r.bull?"bullCell":"bearCell"}">${r.signal}</td>
+      <td>${num(r.close)}</td><td>${num(r.level)}</td><td>${num(r.wick)}</td>
+      <td><a href="${chart}" target="_blank" rel="noopener">CoinDCX ↗</a></td>`;
+    $("rows").appendChild(tr);
   }
 }
 
-async function scan() {
-  if (els.scanBtn.disabled) return;
+async function loadMarkets(){
+  const data=await api("/api/markets");
+  symbols=data.symbols;
+  $("total").textContent=data.count;
+  $("status").textContent="Ready";
+}
 
-  els.scanBtn.disabled = true;
-  setStatus("busy", "Scanning...");
-  els.resultNote.textContent = "Market data पढ़ा जा रहा है...";
+async function scan(){
+  const btn=$("scan");
+  btn.disabled=true;
+  results=[];
+  $("signals").textContent="0";
+  $("status").textContent="Scanning…";
+  const tf=$("interval").value;
+  const batch=8;
 
-  try {
-    const {base, symbols: allSymbols} = await loadSymbols();
-    const scanTf = els.scanTf.value;
-
-    const rows = [];
-    // Small batches reduce browser/API pressure and make the scanner more stable.
-    const batchSize = 8;
-
-    for (let i = 0; i < allSymbols.length; i += batchSize) {
-      const batch = allSymbols.slice(i, i + batchSize);
-      const results = await Promise.all(
-        batch.map(s => scanSymbol(base, s, scanTf).catch(() => null))
-      );
-      rows.push(...results.filter(Boolean));
-
-      els.scanned.textContent = Math.min(i + batch.length, allSymbols.length);
-      els.signals.textContent = rows.length;
-      els.resultNote.textContent = `Scanning ${Math.min(i + batch.length, allSymbols.length)}/${allSymbols.length} symbols...`;
-
-      // Tiny pause between batches.
-      await new Promise(r => setTimeout(r, 120));
+  try{
+    for(let i=0;i<symbols.length;i+=batch){
+      const part=symbols.slice(i,i+batch);
+      const got=await Promise.all(part.map(s=>check(s,tf).catch(()=>null)));
+      results.push(...got.filter(Boolean));
+      $("scanned").textContent=Math.min(i+batch,symbols.length);
+      $("signals").textContent=results.length;
+      $("status").textContent=`${Math.min(i+batch,symbols.length)}/${symbols.length}`;
+      draw();
     }
-
-    render(rows);
-    els.scanned.textContent = allSymbols.length;
-    els.signals.textContent = rows.length;
-    els.lastScan.textContent = new Date().toLocaleTimeString("en-IN");
-    els.resultNote.textContent = rows.length
-      ? `${rows.length} signal मिला`
-      : "कोई signal नहीं मिला";
-    setStatus("ok", "Scan complete");
-  } catch (err) {
-    console.error(err);
-    setStatus("err", "API error");
-    els.resultNote.textContent = "Binance API से data नहीं मिल पाया. Internet/CORS/API status check करें.";
-  } finally {
-    els.scanBtn.disabled = false;
+    $("status").textContent="Complete";
+  }catch(e){
+    console.error(e);
+    $("status").textContent="Error";
+  }finally{
+    btn.disabled=false;
   }
 }
 
-function setupTimer() {
-  if (timer) clearInterval(timer);
-  const mins = Number(els.autoRefresh.value);
-  if (mins > 0) timer = setInterval(scan, mins * 60 * 1000);
-}
-
-els.scanBtn.addEventListener("click", scan);
-els.search.addEventListener("input", () => {
-  // Search only filters the current table; it does not start a new API scan.
-});
-els.autoRefresh.addEventListener("change", setupTimer);
-els.market.addEventListener("change", () => {
-  els.resultNote.textContent = "Market बदल गया — Scan Now दबाएँ.";
-  els.results.innerHTML = `<tr><td colspan="7" class="empty">नया market scan करने के लिए Scan Now दबाएँ.</td></tr>`;
-});
-els.scanTf.addEventListener("change", () => {
-  els.resultNote.textContent = `${els.scanTf.value} candle selected — Scan Now दबाएँ.`;
-});
-
-setStatus("", "Ready");
+$("scan").addEventListener("click",scan);
+$("filter").addEventListener("input",draw);
+loadMarkets().catch(e=>{$("status").textContent="CoinDCX API Error";console.error(e);});
