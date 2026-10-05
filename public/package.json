@@ -1,15 +1,1 @@
-{
-  "name": "coindcx-1h-sweep-radar-v15-1-fixed",
-  "version": "15.1.0",
-  "private": true,
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  "dependencies": {
-    "express": "^4.21.2"
-  }
-}
+{"name":"coindcx-sweep-radar-v18","version":"18.0.0","private":true,"scripts":{"start":"node server.js"},"dependencies":{"express":"^4.21.2"}}
