@@ -1,1 +1,66 @@
-
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CoinDCX Sweep Radar V18.1</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080e1d;color:#eef3ff;font-family:Arial,sans-serif}
+header{padding:16px;background:#111b35;position:sticky;top:0;z-index:3;border-bottom:1px solid #26365d}
+h1{margin:0 0 5px;font-size:21px}.sub{font-size:12px;color:#9eabc8}.bar{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+button{border:1px solid #3a4d7b;background:#1b294b;color:#fff;border-radius:8px;padding:9px 12px}button.on{background:#247b57}
+#diag{margin:12px 14px 0;padding:10px;border-radius:9px;background:#101a31;color:#aebbd7;font-size:12px}
+#diag.bad{background:#351923;color:#ffb5bd}.grid{padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(295px,1fr));gap:12px}
+.card{background:#101a30;border:1px solid #293b64;border-radius:12px;padding:14px}.card.strong{border-color:#f2b84b;box-shadow:0 0 18px #f2b84b20}.card.elite{border-color:#ff7272}
+.tag{display:inline-block;padding:4px 7px;border-radius:6px;background:#253557;font-size:10px;margin-left:5px}.row{display:flex;justify-content:space-between;margin:8px 0}
+.score{font-size:28px;font-weight:800}.green{color:#54e38e}.yellow{color:#ffd166}.orange{color:#ffb347}.muted{color:#8f9dbb}.empty{text-align:center;padding:35px;color:#a4b0ca}
+.modal{display:none;position:fixed;inset:0;background:#000b;z-index:5;padding:12px;align-items:center;justify-content:center}.box{background:#0e172b;width:100%;max-width:900px;max-height:94vh;overflow:auto;padding:14px;border-radius:13px}.close{float:right}
+canvas{width:100%;display:block;background:#070c17;border-radius:8px}.price{height:310px}.rsi{height:120px;margin-top:7px}
+@media(max-width:600px){h1{font-size:18px}.grid{grid-template-columns:1fr}}
+</style></head><body>
+<header><h1>🚀 CoinDCX Sweep Radar V18.1</h1><div class="sub">🔥 Strong Confirmed + 🏆 Elite Setup • Previous 1H → 5M/10M sweep confirmation</div>
+<div class="bar"><button class="on" data-f="BOTH">Both</button><button data-f="BULLISH">Bullish</button><button data-f="BEARISH">Bearish</button><button onclick="scan()">🔄 Scan Now</button></div></header>
+<div id="diag">Connecting to CoinDCX…</div><div id="grid"><div class="empty">Scanning…</div></div>
+<div id="modal" class="modal"><div class="box"><button class="close" onclick="closeM()">✕</button><h2 id="mt"></h2><canvas id="pc" class="price"></canvas><canvas id="rc" class="rsi"></canvas></div></div>
+<script>
+let data=[],filter="BOTH";
+document.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{filter=b.dataset.f;document.querySelectorAll("[data-f]").forEach(x=>x.classList.remove("on"));b.classList.add("on");render()});
+const fmt=x=>Number(x).toPrecision(7);
+function diag(t,bad=false){let d=document.getElementById("diag");d.textContent=t;d.className=bad?"bad":""}
+async function scan(){
+  diag("⏳ Scanning CoinDCX markets…");
+  try{
+    const r=await fetch("/api/scan?ts="+Date.now());const j=await r.json();
+    if(!r.ok||!j.ok)throw Error(j.error||"Scanner error");
+    data=j.signals||[];
+    diag("✅ CoinDCX: "+j.marketCount+" USDT markets checked • "+j.signalCount+" setups • BTC: "+j.btcBias+" • scan "+(j.elapsedMs/1000).toFixed(1)+"s • "+new Date().toLocaleTimeString());
+    render();
+  }catch(e){diag("❌ "+e.message+" — /health and /api/debug can be checked on Render.",true)}
+}
+function render(){
+  let a=data.filter(x=>filter==="BOTH"||x.side===filter).sort((x,y)=>y.score-x.score);
+  let g=document.getElementById("grid");
+  if(!a.length){g.innerHTML='<div class="empty">No setup currently. WATCHING/CONFIRMED/STRONG CONFIRMED will appear automatically when conditions occur.</div>';return}
+  g.innerHTML=a.map((x,i)=>{
+    let strong=x.status==="STRONG CONFIRMED",elite=x.score>=90;
+    return `<div class="card ${strong?"strong":""} ${elite?"elite":""}">
+      <div><b>${i+1}. ${x.pair.replace("B-","")}</b><span class="tag">${x.side}</span><span class="tag">${x.status}</span></div>
+      <div class="row"><span class="muted">Quality</span><span class="score">${x.score}</span></div>
+      <div class="row"><span>Entry</span><b>${fmt(x.entry)}</b></div><div class="row"><span>SL</span><span>${fmt(x.sl)}</span></div>
+      <div class="row"><span>T1 / T2 / T3</span><span>${fmt(x.t1)} / ${fmt(x.t2)} / ${fmt(x.t3)}</span></div>
+      <div class="muted" style="font-size:11px">RSI ${x.rsi??"-"} • Vol ${x.volumeRatio}x • Body ${x.body} • Reject ${x.rejection} • Sweep ${x.depth} ATR • BTC ${x.btcBias}</div>
+      <button style="margin-top:10px" onclick='openChart(${JSON.stringify(x.pair)})'>📊 Chart + RSI</button>
+    </div>`;
+  }).join("");
+}
+async function openChart(pair){
+  document.getElementById("modal").style.display="flex";document.getElementById("mt").textContent=pair.replace("B-","")+" • 5M + RSI14";
+  try{let j=await(await fetch("/api/chart?pair="+encodeURIComponent(pair))).json();draw(j.candles||[],j.rsi||[])}catch(e){}
+}
+function closeM(){document.getElementById("modal").style.display="none"}
+function draw(c,r){
+  let cv=document.getElementById("pc"),ctx=cv.getContext("2d"),w=cv.clientWidth,h=cv.clientHeight,d=devicePixelRatio||1;cv.width=w*d;cv.height=h*d;ctx.setTransform(d,0,0,d,0,0);ctx.clearRect(0,0,w,h);
+  if(!c.length)return;let lo=Math.min(...c.map(z=>z.l)),hi=Math.max(...c.map(z=>z.h)),Y=v=>h-15-(v-lo)/(hi-lo||1)*(h-30),X=i=>15+i/(c.length-1)*(w-30);
+  c.forEach((z,i)=>{let x=X(i);ctx.beginPath();ctx.moveTo(x,Y(z.h));ctx.lineTo(x,Y(z.l));ctx.stroke();ctx.beginPath();ctx.moveTo(x-2,Y(z.o));ctx.lineTo(x-2,Y(z.c));ctx.lineWidth=4;ctx.stroke()});
+  let rc=document.getElementById("rc"),q=rc.getContext("2d"),rw=rc.clientWidth,rh=rc.clientHeight;rc.width=rw*d;rc.height=rh*d;q.setTransform(d,0,0,d,0,0);q.clearRect(0,0,rw,rh);
+  [30,50,70].forEach(v=>{let y=rh-v/100*rh;q.beginPath();q.moveTo(0,y);q.lineTo(rw,y);q.stroke()});
+  q.beginPath();r.forEach((v,i)=>{if(v==null)return;let x=i/(r.length-1)*rw,y=rh-v/100*rh;i?q.lineTo(x,y):q.moveTo(x,y)});q.stroke();
+}
+scan();setInterval(scan,60000);
+</script></body></html>
