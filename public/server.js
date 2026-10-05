@@ -1,201 +1,106 @@
-const express=require("express");
-const path=require("path");
-const app=express();
-const PORT=process.env.PORT||10000;
-const API="https://api.coindcx.com";
-const cache=new Map();
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
-app.use(express.static(__dirname));
+const PORT = process.env.PORT || 10000;
+const BASE = 'https://api.coindcx.com';
+const CACHE_MS = 45000;
+const SCAN_MS = 60000;
+const MAX_COINS = Number(process.env.MAX_COINS || 220);
+const WORKERS = Number(process.env.WORKERS || 6);
+const cache = new Map();
+const state = new Map();
+let lastScan = {at:0, elapsed:0, marketCount:0, signalCount:0, errors:0, btcBias:'NEUTRAL', busy:false};
+let markets = [];
+let latestSignals = [];
 
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-async function dcx(p){
-  const r=await fetch(API+p,{headers:{"User-Agent":"Mozilla/5.0 CoinDCX-Sweep-Radar/18.1"}});
-  if(!r.ok) throw new Error("CoinDCX API "+r.status);
-  return r.json();
-}
-function sma(a,n){return a.length<n?null:a.slice(-n).reduce((x,y)=>x+y,0)/n}
-function ema(a,n){if(!a.length)return null;let e=a[0],k=2/(n+1);for(let i=1;i<a.length;i++)e=a[i]*k+e*(1-k);return e}
-function rsi(a,n=14){if(a.length<n+1)return null;let g=0,l=0;for(let i=a.length-n;i<a.length;i++){let d=a[i]-a[i-1];if(d>0)g+=d;else l-=d}return l?100-100/(1+g/l):100}
-function atr(c,n=14){if(c.length<n+1)return null;let t=[];for(let i=1;i<c.length;i++)t.push(Math.max(c[i].h-c[i].l,Math.abs(c[i].h-c[i-1].c),Math.abs(c[i].l-c[i-1].c)));return sma(t,n)}
-function agg(rows,mins){
-  const ms=mins*60000,out=[];
-  for(const z of rows){
-    const t=Math.floor(z.t/ms)*ms,last=out[out.length-1];
-    if(!last||last.t!==t)out.push({t,o:z.o,h:z.h,l:z.l,c:z.c,v:z.v});
-    else{last.h=Math.max(last.h,z.h);last.l=Math.min(last.l,z.l);last.c=z.c;last.v+=z.v}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function num(x){const n=Number(x);return Number.isFinite(n)?n:null;}
+function clamp(x,a,b){return Math.max(a,Math.min(b,x));}
+function avg(a){return a.length?a.reduce((s,x)=>s+x,0)/a.length:0;}
+function ema(vals,p){if(!vals.length)return []; const k=2/(p+1); let e=vals[0]; const out=[e]; for(let i=1;i<vals.length;i++){e=vals[i]*k+e*(1-k);out.push(e)} return out;}
+function rsi(vals,p=14){const out=Array(vals.length).fill(null); if(vals.length<=p)return out; let g=0,l=0; for(let i=1;i<=p;i++){const d=vals[i]-vals[i-1]; if(d>=0)g+=d;else l-=d;} let ag=g/p, al=l/p; out[p]=al===0?100:100-100/(1+ag/al); for(let i=p+1;i<vals.length;i++){const d=vals[i]-vals[i-1]; const gain=Math.max(0,d), loss=Math.max(0,-d); ag=(ag*(p-1)+gain)/p; al=(al*(p-1)+loss)/p; out[i]=al===0?100:100-100/(1+ag/al);} return out;}
+function atr(c,p=14){if(c.length<p+1)return null; let tr=[]; for(let i=1;i<c.length;i++)tr.push(Math.max(c[i].high-c[i].low,Math.abs(c[i].high-c[i-1].close),Math.abs(c[i].low-c[i-1].close))); return avg(tr.slice(-p));}
+function parseCandles(raw){
+  if(!Array.isArray(raw)) return [];
+  const out=[];
+  for(const x of raw){
+    let t,o,h,l,c,v;
+    if(Array.isArray(x)){[t,o,h,l,c,v]=x;} else {t=x.time??x.timestamp??x.t;o=x.open??x.o;h=x.high??x.h;l=x.low??x.l;c=x.close??x.c;v=x.volume??x.v;}
+    t=Number(t); if(t<1e12)t*=1000; o=num(o);h=num(h);l=num(l);c=num(c);v=num(v)||0;
+    if([t,o,h,l,c].every(Number.isFinite)) out.push({time:t,open:o,high:h,low:l,close:c,volume:v});
   }
-  return out;
+  out.sort((a,b)=>a.time-b.time); return out;
+}
+function aggregate1m(candles, mins){
+  const out=[]; const step=mins*60*1000; let cur=null, bucket=null;
+  for(const c of candles){const b=Math.floor(c.time/step)*step; if(bucket===null||b!==bucket){if(cur)out.push(cur); bucket=b; cur={time:b,open:c.open,high:c.high,low:c.low,close:c.close,volume:c.volume};} else {cur.high=Math.max(cur.high,c.high);cur.low=Math.min(cur.low,c.low);cur.close=c.close;cur.volume+=c.volume;}}
+  if(cur)out.push(cur); return out;
+}
+function completed(c){if(!c.length)return c; const now=Date.now(); return c.filter(x=>x.time+60*1000<=now);}
+async function api(pathname){
+  const u=BASE+pathname; const hit=cache.get(u); if(hit&&Date.now()-hit.at<CACHE_MS)return hit.data;
+  const ctl=new AbortController(); const tm=setTimeout(()=>ctl.abort(),12000);
+  try{const r=await fetch(u,{signal:ctl.signal,headers:{'User-Agent':'CoinDCX-AutoPilot-V19/1.0'}}); if(!r.ok)throw new Error('HTTP '+r.status); const d=await r.json(); cache.set(u,{at:Date.now(),data:d}); return d;} finally{clearTimeout(tm)}
+}
+function toPair(symbol){if(/^B-[A-Z0-9]+_USDT$/.test(symbol))return symbol; if(/^[A-Z0-9]+USDT$/.test(symbol))return 'B-'+symbol.slice(0,-4)+'_USDT'; if(/^[A-Z0-9]+\/USDT$/.test(symbol))return 'B-'+symbol.replace('/USDT','_USDT'); return null;}
+async function discover(){
+  let raw=await api('/exchange/v1/markets'); let arr=[];
+  if(Array.isArray(raw)) arr=raw; else if(raw&&Array.isArray(raw.markets))arr=raw.markets;
+  let pairs=arr.map(x=>typeof x==='string'?x:(x.symbol||x.market||x.pair||'')).map(toPair).filter(Boolean);
+  pairs=[...new Set(pairs)].filter(x=>x.endsWith('_USDT')).slice(0,MAX_COINS);
+  return pairs;
 }
 async function candles(pair,interval,limit){
-  const key=pair+"|"+interval+"|"+limit,old=cache.get(key);
-  if(old&&Date.now()-old.at<15000)return old.v;
-  const raw=await dcx("/market_data/candles?pair="+encodeURIComponent(pair)+"&interval="+interval+"&limit="+limit);
-  const a=(Array.isArray(raw)?raw:[]).map(x=>({
-    t:+x.time,o:+x.open,h:+x.high,l:+x.low,c:+x.close,v:+(x.volume||0)
-  })).filter(x=>Number.isFinite(x.t)&&Number.isFinite(x.c)).sort((a,b)=>a.t-b.t);
-  cache.set(key,{at:Date.now(),v:a}); return a;
+  const raw=await api('/market_data/candles?pair='+encodeURIComponent(pair)+'&interval='+interval+'&limit='+limit); return parseCandles(raw?.data||raw);
 }
-
-/* IMPORTANT FIX:
-   /exchange/v1/markets returns symbols such as BTCUSDT, not B-BTC_USDT.
-   Candle API uses B-BTC_USDT. */
-async function marketList(){
-  const a=await dcx("/exchange/v1/markets");
-  return [...new Set(a.filter(x=>typeof x==="string"&&/^[A-Z0-9]+USDT$/.test(x))
-    .map(x=>"B-"+x.slice(0,-4)+"_USDT"))];
-}
-
-function completed(a,ms){return a.filter(x=>x.t+ms<=Date.now())}
-
-function evaluate(side,level,tc,btcBias){
-  if(tc.length<25)return null;
-  let sweep=-1,conf=-1;
-  for(let i=0;i<tc.length;i++){
-    const z=tc[i];
-    const swept=side==="BULLISH"?z.l<level:z.h>level;
-    if(sweep<0 && swept){sweep=i;continue}
-    if(sweep>=0 && i>sweep){
-      const confirmed=side==="BULLISH"?z.c>level:z.c<level;
-      if(confirmed){conf=i;break}
-      /* invalidate only after a decisive move through the opposite side is not used here;
-         keep watching for several closed candles */
+function directionFilter(sig,f){return f==='BOTH'||sig.direction===f;}
+function setupFor(pair,h1,tf,btcBias){
+  if(h1.length<3||tf.length<25)return null;
+  const ref=h1[h1.length-1];
+  const closes=tf.map(x=>x.close), rs=rsi(closes), e20=ema(closes,20), e50=ema(closes,50), at=atr(tf,14)||Math.abs(ref.high-ref.low)*0.2;
+  let found=[];
+  for(let i=Math.max(20,tf.length-80);i<tf.length-1;i++){
+    const x=tf[i];
+    const bearSweep=x.high>ref.high;
+    const bullSweep=x.low<ref.low;
+    if(!bearSweep&&!bullSweep)continue;
+    for(let j=i;j<=Math.min(tf.length-1,i+6);j++){
+      const y=tf[j];
+      if(y.time<=x.time){}
+      const bear=bearSweep && y.close<ref.high;
+      const bull=bullSweep && y.close>ref.low;
+      if(!bear&&!bull)continue;
+      const dir=bear?'BEARISH':'BULLISH';
+      const level=bear?ref.high:ref.low;
+      const sweepDepth=bear?Math.max(0,x.high-level):Math.max(0,level-x.low);
+      const range=Math.max(y.high-y.low,1e-12), body=Math.abs(y.close-y.open)/range;
+      const rej=bear?Math.max(0,y.high-Math.max(y.open,y.close))/range:Math.max(0,Math.min(y.open,y.close)-y.low)/range;
+      const recentVol=avg(tf.slice(Math.max(0,j-20),j).map(z=>z.volume)); const vr=recentVol>0?y.volume/recentVol:1;
+      const r=rs[j]??50; const em20=e20[j], em50=e50[j];
+      const emaAlign=dir==='BULLISH'?(em20>em50?1:0):(em20<em50?1:0);
+      const rsiAlign=dir==='BULLISH'?(r>=50&&r<=72?1:0):(r<=50&&r>=28?1:0);
+      const btcAlign=btcBias==='NEUTRAL'?0.5:(btcBias===dir?1:0);
+      const depthScore=clamp((sweepDepth/Math.max(at,1e-12))*18,0,18);
+      const score=Math.round(clamp(24*body+18*rej+depthScore+14*clamp(vr/2,0,1)+10*rsiAlign+10*emaAlign+8*btcAlign+6*(j===i?1:0),0,100));
+      const strong=score>=78 && body>=0.45 && (vr>=0.9) && ((dir==='BULLISH'&&r>45)||(dir==='BEARISH'&&r<55));
+      const elite=score>=90 && strong && emaAlign===1 && btcAlign>=0.5;
+      const entry=y.close;
+      const risk=Math.max(at*0.75,Math.abs(entry-level)*0.7,entry*0.003);
+      const sl=dir==='BULLISH'?Math.min(x.low,y.low)-risk*0.15:Math.max(x.high,y.high)+risk*0.15;
+      const rr=entry-sl; const t1=dir==='BULLISH'?entry+Math.abs(entry-sl)*1.0:entry-Math.abs(entry-sl)*1.0; const t2=dir==='BULLISH'?entry+Math.abs(entry-sl)*1.8:entry-Math.abs(entry-sl)*1.8; const t3=dir==='BULLISH'?entry+Math.abs(entry-sl)*2.7:entry-Math.abs(entry-sl)*2.7;
+      found.push({pair,direction:dir,stage:elite?'ELITE':strong?'STRONG CONFIRMED':'CONFIRMED',score,elite,strong,level,sweepTime:x.time,confirmTime:y.time,entry,sl,t1,t2,t3,rsi:r,ema20:em20,ema50:em50,volumeRatio:vr,sweepDepth,body,rejection:rej,btcBias,tf:tf===tf?'5M/10M':'',reasons:[bear?'1H High swept':'1H Low swept',j===i?'same-candle reclaim':'later-candle reclaim',body>=0.55?'strong body':'body acceptable',rej>=0.2?'rejection wick':'rejection modest',vr>=1.2?'volume support':'volume normal',rsiAlign?'RSI aligned':'RSI neutral',emaAlign?'EMA aligned':'EMA mixed',btcBias===dir?'BTC aligned':btcBias==='NEUTRAL'?'BTC neutral':'BTC opposite']});
+      break;
     }
-    if(sweep>=0 && i-sweep>12)break;
   }
-  if(sweep<0)return null;
-
-  const last=tc[tc.length-1];
-  const idx=conf>=0?conf:tc.length-1;
-  const c=tc[idx];
-  const av=atr(tc.slice(0,idx+1))||Math.max(Math.abs(level)*0.002,1e-8);
-  const range=Math.max(c.h-c.l,1e-12);
-  const body=Math.abs(c.c-c.o)/range;
-  const rejection=side==="BULLISH"?(Math.min(c.o,c.c)-c.l)/range:(c.h-Math.max(c.o,c.c))/range;
-  const depth=side==="BULLISH"?(level-tc[sweep].l)/av:(tc[sweep].h-level)/av;
-  const baseVol=sma(tc.slice(Math.max(0,idx-20),idx).map(x=>x.v),20)||c.v;
-  const vr=baseVol?c.v/baseVol:1;
-  const rr=rsi(tc.slice(0,idx+1).map(x=>x.c));
-  const closes=tc.slice(0,idx+1).map(x=>x.c);
-  const e20=ema(closes,20),e50=ema(closes,50);
-  const emaAlign=side==="BULLISH"?c.c>e20&&e20>e50:c.c<e20&&e20<e50;
-  const btcAlign=btcBias==="NEUTRAL"||btcBias===side;
-
-  let score=30;
-  score+=Math.min(18,body*18);
-  score+=Math.min(12,rejection*12);
-  score+=Math.min(14,Math.max(0,depth)*3.5);
-  score+=Math.min(10,Math.max(0,vr-1)*12);
-  if((side==="BULLISH"&&rr>=50&&rr<=72)||(side==="BEARISH"&&rr<=50&&rr>=28))score+=5;
-  if(emaAlign)score+=5;
-  if(btcAlign)score+=6;
-  if(conf>=0)score+=8; else score-=3;
-  if(conf>=0)score-=Math.max(0,conf-sweep-1)*2;
-  score=Math.max(0,Math.min(100,Math.round(score)));
-
-  const strong=conf>=0 && score>=70 && body>=0.45 && vr>=1.05 && (emaAlign||btcAlign);
-  return {
-    status:conf<0?"WATCHING":strong?"STRONG CONFIRMED":"CONFIRMED",
-    side,level,score,strong,
-    sweepIndex:sweep,confirmIndex:conf,
-    sweepCandle:tc[sweep],confirmCandle:conf>=0?tc[conf]:null,
-    rsi:rr==null?null:+rr.toFixed(1),
-    volumeRatio:+vr.toFixed(2),
-    body:+body.toFixed(2),rejection:+rejection.toFixed(2),
-    depth:+depth.toFixed(2),atr:av,emaAlign,btcAlign
-  };
+  if(!found.length)return null; found.sort((a,b)=>b.score-a.score); return found[0];
 }
-
-async function btcBias(){
-  try{
-    const b=completed(await candles("B-BTC_USDT","1h",40),3600000);
-    if(b.length<2)return "NEUTRAL";
-    const z=b[b.length-1];
-    const e20=ema(b.map(x=>x.c),20);
-    if(z.c>z.o && (!e20||z.c>=e20))return "BULLISH";
-    if(z.c<z.o && (!e20||z.c<=e20))return "BEARISH";
-    return "NEUTRAL";
-  }catch{return "NEUTRAL"}
+function btcBiasFrom(h1){if(h1.length<3)return 'NEUTRAL';const c=h1.map(x=>x.close),e20=ema(c,20),e50=ema(c,50),x=h1[h1.length-1]; if(e20.at(-1)>e50.at(-1)&&x.close>e20.at(-1))return 'BULLISH'; if(e20.at(-1)<e50.at(-1)&&x.close<e20.at(-1))return 'BEARISH'; return 'NEUTRAL';}
+async function scanOne(pair,btcBias){
+  try{const [h1,m1]=await Promise.all([candles(pair,'1h',40),candles(pair,'1m',760)]); const hc=completed(h1), mc=completed(m1); const c5=aggregate1m(mc,5), c10=aggregate1m(mc,10); const a=setupFor(pair,hc,c5,btcBias), b=setupFor(pair,hc,c10,btcBias); let s=[a,b].filter(Boolean).sort((x,y)=>y.score-x.score)[0]; if(!s)return null; const key=pair+'|'+s.direction+'|'+Math.round(s.level*1e8); const old=state.get(key); s.ageScans=(old?.ageScans||0)+1; state.set(key,{ageScans:s.ageScans,last:s}); return s;}catch(e){return {error:String(e.message||e),pair};}
 }
-
-async function scanOne(pair,btc){
-  try{
-    const [h1raw,mraw]=await Promise.all([
-      candles(pair,"1h",80),
-      candles(pair,"1m",900)
-    ]);
-    const h1=completed(h1raw,3600000);
-    const m1=completed(mraw,60000);
-    if(h1.length<25||m1.length<100)return null;
-    const ref=h1[h1.length-1];
-    const t5=agg(m1,5),t10=agg(m1,10);
-    const tests=[
-      evaluate("BULLISH",ref.l,t5,btc),
-      evaluate("BEARISH",ref.h,t5,btc),
-      evaluate("BULLISH",ref.l,t10,btc),
-      evaluate("BEARISH",ref.h,t10,btc)
-    ].filter(Boolean);
-    if(!tests.length)return null;
-    const best=tests.sort((a,b)=>b.score-a.score)[0];
-    const entry=best.confirmCandle?.c||m1[m1.length-1].c;
-    const risk=best.atr*1.2;
-    const sl=best.side==="BULLISH"?entry-risk:entry+risk;
-    const r=Math.abs(entry-sl);
-    return {
-      pair,side:best.side,status:best.status,score:best.score,
-      entry,sl,
-      t1:best.side==="BULLISH"?entry+r*1.5:entry-r*1.5,
-      t2:best.side==="BULLISH"?entry+r*2.5:entry-r*2.5,
-      t3:best.side==="BULLISH"?entry+r*4:entry-r*4,
-      rsi:best.rsi,volumeRatio:best.volumeRatio,body:best.body,
-      rejection:best.rejection,depth:best.depth,btcBias:btc,
-      level:best.level,sweepCandle:best.sweepCandle,confirmCandle:best.confirmCandle
-    };
-  }catch(e){return null}
-}
-
-app.get("/",(req,res)=>res.sendFile(path.join(__dirname,"index.html")));
-app.get("/health",(req,res)=>res.json({ok:true,version:"18.1.0",exchange:"CoinDCX"}));
-
-app.get("/api/scan",async(req,res)=>{
-  const started=Date.now();
-  try{
-    const markets=await marketList();
-    const btc=await btcBias();
-    const out=[];let cursor=0,errors=0;
-    const worker=async()=>{
-      while(true){
-        const i=cursor++;
-        if(i>=markets.length)return;
-        const x=await scanOne(markets[i],btc);
-        if(x)out.push(x);
-        else errors++;
-        await sleep(40);
-      }
-    };
-    await Promise.all(Array.from({length:8},worker));
-    out.sort((a,b)=>b.score-a.score);
-    res.json({ok:true,marketCount:markets.length,signalCount:out.length,errors,btcBias:btc,elapsedMs:Date.now()-started,signals:out,time:Date.now()});
-  }catch(e){
-    res.status(500).json({ok:false,error:e.message,elapsedMs:Date.now()-started});
-  }
-});
-
-app.get("/api/debug",async(req,res)=>{
-  try{
-    const markets=await marketList();
-    const btc=await candles("B-BTC_USDT","1m",5);
-    res.json({ok:true,marketCount:markets.length,sampleMarkets:markets.slice(0,10),btcCandleCount:btc.length});
-  }catch(e){res.status(500).json({ok:false,error:e.message})}
-});
-
-app.get("/api/chart",async(req,res)=>{
-  try{
-    const pair=req.query.pair;
-    if(!/^B-[A-Z0-9]+_USDT$/.test(pair))throw Error("Invalid pair");
-    const m=completed(await candles(pair,"1m",900),60000);
-    const c=agg(m,5);
-    res.json({ok:true,candles:c,rsi:c.map((_,i)=>rsi(c.slice(0,i+1).map(z=>z.c)))});
-  }catch(e){res.status(500).json({ok:false,error:e.message})}
-});
-
-app.listen(PORT,"0.0.0.0",()=>console.log("CoinDCX Sweep Radar V18.1 FIXED on "+PORT));
+async function runScan(){if(lastScan.busy)return;lastScan.busy=true; const started=Date.now(); let errors=0; try{markets=await discover(); let btcBias='NEUTRAL'; try{const b=completed(await candles('B-BTC_USDT','1h',60));btcBias=btcBiasFrom(b);}catch{} const out=[]; let idx=0; async function worker(){while(true){const i=idx++; if(i>=markets.length)return; const r=await scanOne(markets[i],btcBias); if(r?.error)errors++; else if(r)out.push(r); await sleep(25);}} await Promise.all(Array.from({length:WORKERS},worker)); out.sort((a,b)=>b.score-a.score||b.confirmTime-a.confirmTime); latestSignals=out.slice(0,25); lastScan={at:Date.now(),elapsed:Date.now()-started,marketCount:markets.length,signalCount:out.length,errors,btcBias,busy:false};}catch(e){lastScan={...lastScan,elapsed:Date.now()-started,errors:errors+1,busy:false,error:String(e.message||e)};}}
+function json(res,obj,code=200){const body=JSON.stringify(obj);res.writeHead(code,{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*'});res.end(body);}
+function serve(res,file){fs.readFile(path.join(__dirname,file),(e,d)=>{if(e){res.writeHead(404);res.end('Not found');}else{const ct=file.endsWith('.html')?'text/html':'text/plain';res.writeHead(200,{'Content-Type':ct});res.end(d);}})}
+const server=http.createServer((req,res)=>{const u=new URL(req.url,'http://localhost'); if(u.pathname==='/health')return json(res,{ok:true,version:'V19 AUTO PILOT',scan:lastScan}); if(u.pathname==='/api/status')return json(res,{version:'V19 AUTO PILOT',scan:lastScan,signals:latestSignals}); if(u.pathname==='/api/chart'){const pair=u.searchParams.get('pair'); if(!pair)return json(res,{error:'pair required'},400); Promise.all([candles(pair,'1h',40),candles(pair,'1m',500)]).then(([h,m])=>json(res,{pair,h1:completed(h),m5:aggregate1m(completed(m),5),rsi:rsi(aggregate1m(completed(m),5).map(x=>x.close))})).catch(e=>json(res,{error:e.message},500));return;} if(u.pathname==='/api/scan'){runScan().then(()=>json(res,{ok:true,scan:lastScan,signals:latestSignals}));return;} if(u.pathname==='/'||u.pathname==='/index.html')return serve(res,'index.html'); res.writeHead(404);res.end('Not found');});
+server.listen(PORT,()=>{console.log('CoinDCX AUTO PILOT V19 running on '+PORT); runScan(); setInterval(runScan,SCAN_MS);});
