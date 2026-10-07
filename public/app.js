@@ -1,24 +1,142 @@
-const $=id=>document.getElementById(id);let markets=[];let currentSignals=[];
-function num(x){return Number(x)}
-function normalize(rows){return (rows||[]).map(c=>{let t=num(c.time);if(t>0&&t<1e11)t*=1000;return{time:t,open:num(c.open),high:num(c.high),low:num(c.low),close:num(c.close),volume:num(c.volume)}}).filter(c=>c.time>0&&[c.open,c.high,c.low,c.close].every(Number.isFinite)).sort((a,b)=>a.time-b.time)}
-function closed(c,ms){return c.time+ms<=Date.now()}
-function aggregate(rows,minutes){const ms=minutes*60000,g=new Map();for(const c of rows){const s=Math.floor(c.time/ms)*ms;if(!g.has(s))g.set(s,[]);g.get(s).push(c)}const out=[];for(const[s,a]of g){a.sort((x,y)=>x.time-y.time);const u=a.filter(c=>c.time>=s&&c.time<s+ms&&c.time+60000<=Date.now());if(!u.length)continue;out.push({time:s,open:u[0].open,high:Math.max(...u.map(x=>x.high)),low:Math.min(...u.map(x=>x.low)),close:u[u.length-1].close,volume:u.reduce((z,x)=>z+x.volume,0)})}return out.sort((a,b)=>a.time-b.time)}
-function rsi(rows,period=14){const out=Array(rows.length).fill(null);if(rows.length<=period)return out;let gain=0,loss=0;for(let i=1;i<=period;i++){const d=rows[i].close-rows[i-1].close;gain+=Math.max(d,0);loss+=Math.max(-d,0)}let ag=gain/period,al=loss/period;out[period]=al===0?100:100-100/(1+ag/al);for(let i=period+1;i<rows.length;i++){const d=rows[i].close-rows[i-1].close;const g=Math.max(d,0),l=Math.max(-d,0);ag=(ag*(period-1)+g)/period;al=(al*(period-1)+l)/period;out[i]=al===0?100:100-100/(1+ag/al)}return out}
-async function getJson(u){const r=await fetch(u);if(!r.ok)throw new Error(await r.text());return r.json()}
-function pairFor(s){return`B-${s.slice(0,-4)}_USDT`}
-function fmt(t){return new Date(t).toLocaleString('en-IN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
-function findSignal(h1Raw,scanRaw,minutes){const h1=normalize(h1Raw).filter(c=>closed(c,3600000));if(!h1.length)return null;const ref=h1[h1.length-1];const scans=scanRaw.filter(c=>closed(c,minutes*60000)&&c.time>ref.time).sort((a,b)=>a.time-b.time);let bear=false,bull=false,bw=null,bl=null;for(const c of scans){if(!bear&&c.high>ref.high){bear=true;bw=c.time}if(!bull&&c.low<ref.low){bull=true;bl=c.time}if(bear&&c.close<ref.high)return{type:'BEARISH',time:c.time,close:c.close,level:ref.high,sweep:bw,confirm:c.time,refTime:ref.time};if(bull&&c.close>ref.low)return{type:'BULLISH',time:c.time,close:c.close,level:ref.low,sweep:bl,confirm:c.time,refTime:ref.time}}return null}
-async function scanOne(symbol,minutes){const pair=pairFor(symbol);const [h1,m1]=await Promise.all([getJson(`/api/candles?pair=${encodeURIComponent(pair)}&interval=1h&limit=12`),getJson(`/api/candles?pair=${encodeURIComponent(pair)}&interval=1m&limit=1000`)]);const bars=aggregate(normalize(m1),minutes);const signal=findSignal(h1,bars,minutes);if(!signal)return null;const rr=rsi(bars,Number($('rsiPeriod').value));let idx=bars.findIndex(x=>x.time===signal.time);let rv=idx>=0?rr[idx]:null;return{...signal,symbol,rsi:rv,bars,ref:h1.filter(c=>closed(c,3600000)).at(-1)}}
-async function loadMarkets(){ $('status').textContent='Loading CoinDCX markets…';const d=await getJson('/api/markets');markets=d.symbols||[];$('marketCount').textContent=markets.length}
-function render(rs){currentSignals=rs;const tb=$('rows');if(!rs.length){tb.innerHTML='<tr><td class="empty" colspan="9">Is latest completed 1H level par abhi confirmed signal nahi mila.</td></tr>';return}tb.innerHTML=rs.sort((a,b)=>b.time-a.time).map((r,i)=>`<tr><td>${fmt(r.time)}</td><td><b>${r.symbol.replace('USDT','')}</b></td><td class="${r.type==='BEARISH'?'bearCell':'bullCell'}">${r.type}</td><td class="rsiStrong">${r.rsi==null?'—':r.rsi.toFixed(1)}</td><td>${r.close}</td><td>${r.level}</td><td>${fmt(r.sweep)}</td><td>${fmt(r.confirm)}</td><td><button class="chartBtn" data-i="${i}">📈 Chart + RSI</button></td></tr>`).join('');tb.querySelectorAll('.chartBtn').forEach(b=>b.onclick=()=>openChart(currentSignals[Number(b.dataset.i)]))}
-function drawLine(canvas,data,opts={}){const dpr=devicePixelRatio||1,w=canvas.clientWidth,h=canvas.clientHeight;canvas.width=w*dpr;canvas.height=h*dpr;const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);if(!data.length)return;const pad={l:55,r:15,t:15,b:28};const vals=data.flatMap(x=>[x.high,x.low]).filter(Number.isFinite);let min=Math.min(...vals),max=Math.max(...vals);if(opts.rsi){min=0;max=100}const X=i=>pad.l+i*(w-pad.l-pad.r)/Math.max(1,data.length-1);const Y=v=>pad.t+(max-v)*(h-pad.t-pad.b)/(max-min||1);ctx.strokeStyle='#25344d';ctx.lineWidth=1;for(let j=0;j<5;j++){const y=pad.t+j*(h-pad.t-pad.b)/4;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke()}ctx.fillStyle='#8090aa';ctx.font='12px Arial';ctx.fillText(max.toFixed(opts.rsi?0:6),6,pad.t+5);ctx.fillText(min.toFixed(opts.rsi?0:6),6,h-pad.b);if(opts.rsi){
-ctx.strokeStyle='#5b6b86';ctx.lineWidth=1;ctx.setLineDash([5,4]);
-[70,30].forEach(v=>{const y=Y(v);ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#aebbd0';ctx.font='12px Arial';ctx.fillText(String(v),8,y+4);ctx.setLineDash([5,4]);});
-ctx.setLineDash([]);
+const FOUR_H = [
+"CARV","SKY","AKE","AIN","MON","LSK","UNI","LTC","PEPE","HBAR","FET","HYPE","BNB","ARB","AAVE","POL","XLM","ETC","STRK","ETH","PENGU","SUI","ETHFI","XRP","DOGE","DOT","XMR","BTC","XAU","TAO","ADA","LINK","MORPHO","SOL","ASTER","DIA","VIRTUAL","ONDO","JUP","USELESS","MAGMA","PARTI","NEAR","LDO","AVAX","CHIP","ZEC","INJ","QNT","TIA","APT","NIGHT"
+];
+const ONE_H = ["BTC","ETH","XAU","SOL","ZEC","RLC","XRP","BR","BZ","HYPER","CL","NEAR","ORCA","DOGE","ADA","SUI","BNB","QUNT"];
+
+const $ = id => document.getElementById(id);
+const fmt = n => Number.isFinite(Number(n)) ? Number(n).toLocaleString(undefined,{maximumFractionDigits:10}) : "-";
+const ist = ms => new Date(ms).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",hour12:false,day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+let instruments = [];
+let instrumentMap = new Map();
+
+async function loadInstruments(){
+  const data = await fetch("/api/instruments").then(r=>r.json());
+  instruments = Array.isArray(data) ? data : [];
+  instrumentMap = new Map();
+  for(const pair of instruments){
+    const base = pair.replace(/^.*?-/, "").split("_")[0].toUpperCase();
+    if(!instrumentMap.has(base)) instrumentMap.set(base,pair);
+  }
 }
-ctx.strokeStyle=opts.rsi?'#b48cff':'#43d19a';ctx.lineWidth=2;ctx.beginPath();data.forEach((c,i)=>{const v=opts.rsi?c.rsi:c.close;if(v==null)return;i?ctx.lineTo(X(i),Y(v)):ctx.moveTo(X(i),Y(v))});ctx.stroke();if(!opts.rsi&&opts.level!=null){ctx.strokeStyle=opts.bear?'#ff6e7d':'#45d99f';ctx.setLineDash([7,5]);ctx.beginPath();ctx.moveTo(pad.l,Y(opts.level));ctx.lineTo(w-pad.r,Y(opts.level));ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=opts.bear?'#ff6e7d':'#45d99f';ctx.fillText('1H LEVEL',w-90,Y(opts.level)-5)}}
-function drawCandles(canvas,bars,signal){const dpr=devicePixelRatio||1,w=canvas.clientWidth,h=canvas.clientHeight;canvas.width=w*dpr;canvas.height=h*dpr;const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);const p={l:50,r:15,t:15,b:25};const recent=bars.slice(-90);const vals=recent.flatMap(x=>[x.high,x.low]);let min=Math.min(...vals),max=Math.max(...vals);const X=i=>p.l+(i+.5)*(w-p.l-p.r)/recent.length;const bw=Math.max(2,(w-p.l-p.r)/recent.length*.65);const Y=v=>p.t+(max-v)*(h-p.t-p.b)/(max-min||1);ctx.clearRect(0,0,w,h);ctx.strokeStyle='#223149';for(let j=0;j<5;j++){const y=p.t+j*(h-p.t-p.b)/4;ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(w-p.r,y);ctx.stroke()}ctx.fillStyle='#8190a8';ctx.font='11px Arial';ctx.fillText(max.toFixed(6),5,p.t+4);ctx.fillText(min.toFixed(6),5,h-p.b);recent.forEach((c,i)=>{const up=c.close>=c.open;ctx.strokeStyle=up?'#20b982':'#ff6474';ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.moveTo(X(i),Y(c.high));ctx.lineTo(X(i),Y(c.low));ctx.stroke();const top=Y(Math.max(c.open,c.close)),bot=Y(Math.min(c.open,c.close));ctx.fillRect(X(i)-bw/2,top,bw,Math.max(1,bot-top))});const level=signal.level;ctx.strokeStyle=signal.type==='BEARISH'?'#ff6474':'#20b982';ctx.setLineDash([7,5]);ctx.beginPath();ctx.moveTo(p.l,Y(level));ctx.lineTo(w-p.r,Y(level));ctx.stroke();ctx.setLineDash([]);const si=recent.findIndex(c=>c.time===signal.sweep),ci=recent.findIndex(c=>c.time===signal.confirm);ctx.fillStyle='#ffd166';ctx.font='bold 12px Arial';if(si>=0)ctx.fillText('SWEEP',X(si)-20,Y(recent[si].high)-10);if(ci>=0)ctx.fillText('CONFIRM',X(ci)-27,Y(recent[ci].low)-10)}
-function openChart(s){$('modal').classList.remove('hidden');$('chartTitle').textContent=`${s.symbol} • ${s.type} • ${s.rsi==null?'RSI —':'RSI '+s.rsi.toFixed(1)}`;const bars=s.bars;const rr=rsi(bars,Number($('rsiPeriod').value));const rsiData=bars.map((c,i)=>({...c,rsi:rr[i]}));setTimeout(()=>{drawCandles($('priceCanvas'),bars,s);drawLine($('rsiCanvas'),rsiData,{rsi:true});$('chartInfo').innerHTML=`<span class="tag">1H Level: ${s.level}</span><span class="tag">Sweep: ${fmt(s.sweep)}</span><span class="tag">Confirmation: ${fmt(s.confirm)}</span><span class="tag">RSI: ${s.rsi==null?'—':s.rsi.toFixed(1)}</span><br>Chart me 1H level, sweep candle, confirmation candle aur RSI 14 dikhaya gaya hai.`},20)}
-$('closeModal').onclick=()=>$('modal').classList.add('hidden');$('modal').onclick=e=>{if(e.target===$('modal'))$('modal').classList.add('hidden')};
-async function scan(){ $('scan').disabled=true;$('signals').textContent='0';$('scanned').textContent='0';try{if(!markets.length)await loadMarkets();const f=$('filter').value.trim().toUpperCase();const list=f?markets.filter(s=>s.includes(f)):markets;const minutes=Number($('interval').value);let done=0,found=0,rs=[];$('status').textContent=`Scanning 0/${list.length}`;for(let i=0;i<list.length;i+=4){const settled=await Promise.allSettled(list.slice(i,i+4).map(s=>scanOne(s,minutes)));for(const q of settled){done++;if(q.status==='fulfilled'&&q.value){rs.push(q.value);found++}}$('scanned').textContent=done;$('signals').textContent=found;$('status').textContent=`Scanning ${done}/${list.length}`;render(rs)}$('status').textContent=`Done — ${found} signal${found===1?'':'s'}`}catch(e){console.error(e);$('status').textContent='Error: '+e.message}finally{$('scan').disabled=false}}
-$('scan').onclick=scan;loadMarkets().then(scan).catch(e=>$('status').textContent='Market load error: '+e.message);
+
+function renderRows(id,list,results){
+  const tbody=$(id); tbody.innerHTML="";
+  for(const symbol of list){
+    const r=results[symbol];
+    const tr=document.createElement("tr");
+    if(!r){
+      tr.innerHTML=`<td>${symbol}</td><td colspan="6" class="muted">Waiting…</td>`;
+    }else if(r.error){
+      tr.innerHTML=`<td>${symbol}</td><td colspan="6" class="missing">${r.error}</td>`;
+    }else if(!r.signal){
+      tr.innerHTML=`<td>${symbol}</td><td>${r.levelType||"-"}</td><td>${fmt(r.sweep)}</td><td>${fmt(r.close)}</td><td class="muted">NO SIGNAL</td><td>-</td><td class="status-ok">Scanned</td>`;
+    }else{
+      const cls=r.signal==="BUY"?"signal-buy":"signal-sell";
+      tr.innerHTML=`<td>${symbol}</td><td>${r.levelType} ${fmt(r.level)}</td><td>${fmt(r.sweep)}</td><td>${fmt(r.close)}</td><td class="${cls}">${r.signal}</td><td>${ist(r.time)}</td><td class="${cls}">CONFIRMED</td>`;
+    }
+    tbody.appendChild(tr);
+  }
+}
+
+function aggregate4h(candles){
+  // CoinDCX futures REST exposes 1H candles. Group them into native UTC 4H blocks.
+  const sorted=candles.map(c=>({open:+c.open,high:+c.high,low:+c.low,close:+c.close,time:+c.time})).sort((a,b)=>a.time-b.time);
+  const groups=new Map();
+  for(const c of sorted){
+    const d=new Date(c.time);
+    const start=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),Math.floor(d.getUTCHours()/4)*4,0,0,0);
+    const key=start;
+    if(!groups.has(key)) groups.set(key,[]);
+    groups.get(key).push(c);
+  }
+  const out=[];
+  for(const [time,g] of groups){
+    if(g.length<4) continue;
+    out.push({open:g[0].open,high:Math.max(...g.map(x=>x.high)),low:Math.min(...g.map(x=>x.low)),close:g[g.length-1].close,time});
+  }
+  return out;
+}
+
+function findLatestSignal(candles){
+  if(candles.length<2) return null;
+  const sorted=candles.slice().sort((a,b)=>a.time-b.time);
+  // Use only fully closed candles. We fetch historical data and deliberately exclude the latest
+  // candle when its time is still inside the current period.
+  const now=Date.now();
+  const period=sorted.length>1 ? Math.max(60000, sorted[sorted.length-1].time - sorted[sorted.length-2].time) : 3600000;
+  const closed=sorted.filter(c=>c.time+period<=now+5000);
+  if(closed.length<2) return null;
+
+  let latest=null;
+  for(let i=1;i<closed.length;i++){
+    const prev=closed[i-1], cur=closed[i];
+    if(cur.high>prev.high && cur.close<prev.high){
+      latest={signal:"SELL",levelType:"HIGH",level:prev.high,sweep:cur.high,close:cur.close,time:cur.time};
+    }
+    if(cur.low<prev.low && cur.close>prev.low){
+      const candidate={signal:"BUY",levelType:"LOW",level:prev.low,sweep:cur.low,close:cur.close,time:cur.time};
+      if(!latest || candidate.time>=latest.time) latest=candidate;
+    }
+  }
+  return latest || {levelType:"Previous",level:closed[closed.length-2].close,sweep:closed[closed.length-1].close,close:closed[closed.length-1].close};
+}
+
+async function getCandles(pair,resolution,hoursBack){
+  const to=Math.floor(Date.now()/1000);
+  const from=to-hoursBack*3600;
+  const q=new URLSearchParams({pair,resolution:String(resolution),from:String(from),to:String(to)});
+  const data=await fetch("/api/candles?"+q).then(r=>r.json());
+  if(data && data.data) return data.data;
+  if(Array.isArray(data)) return data;
+  throw new Error("No candle data");
+}
+
+async function scanList(list, timeframe){
+  const out={};
+  for(const symbol of list){
+    const pair=instrumentMap.get(symbol.toUpperCase());
+    if(!pair){
+      out[symbol]={error:"CoinDCX futures pair not found"};
+      continue;
+    }
+    try{
+      const raw=await getCandles(pair,"60",timeframe==="4H"?24*10:24*5);
+      const candles=timeframe==="4H"?aggregate4h(raw):raw;
+      out[symbol]=findLatestSignal(candles);
+      if(out[symbol]) out[symbol].pair=pair;
+    }catch(e){
+      out[symbol]={error:"Data error"};
+    }
+    // Keep requests gentle on the public API.
+    await sleep(80);
+  }
+  return out;
+}
+
+async function scan(){
+  $("status").textContent="Scanning CoinDCX…";
+  $("scanBtn").disabled=true;
+  try{
+    await loadInstruments();
+    const [r4,r1]=await Promise.all([scanList(FOUR_H,"4H"),scanList(ONE_H,"1H")]);
+    renderRows("table4h",FOUR_H,r4);
+    renderRows("table1h",ONE_H,r1);
+    const found4=Object.values(r4).filter(x=>x&&x.signal).length;
+    const found1=Object.values(r1).filter(x=>x&&x.signal).length;
+    $("status").innerHTML=`Last scan: <b>${ist(Date.now())} IST</b> • 4H signals: <b>${found4}</b> • 1H signals: <b>${found1}</b>`;
+  }catch(e){
+    $("status").textContent="Scanner error: "+e.message;
+  }finally{
+    $("scanBtn").disabled=false;
+  }
+}
+
+function clock(){
+  $("clock").textContent=new Date().toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour12:false})+" IST";
+}
+$("scanBtn").addEventListener("click",scan);
+setInterval(clock,1000); clock();
+scan();
+setInterval(scan,5*60*1000);
