@@ -1,9 +1,1 @@
-{
-  "name":"coindcx-auto-pilot-v19",
-  "version":"19.0.0",
-  "private":true,
-  "type":"commonjs",
-  "scripts":{"start":"node server.js"},
-  "engines":{"node":">=18"},
-  "dependencies":{}
-}
+
