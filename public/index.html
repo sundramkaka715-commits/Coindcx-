@@ -1,76 +1,10 @@
 <!doctype html>
-<html lang="hi">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>CoinDCX 4H / 1H Sweep Scanner</title>
-  <link rel="stylesheet" href="/style.css">
-</head>
+<html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CoinDCX Fakeout Scanner</title><link rel="stylesheet" href="/style.css"></head>
 <body>
-  <header>
-    <div>
-      <h1>CoinDCX Sweep Scanner</h1>
-      <p>4H High/Low Fakeout + 1H High/Low Fakeout</p>
-    </div>
-    <div class="actions">
-      <button id="scanBtn">SCAN NOW</button>
-      <span id="clock">--:--:--</span>
-    </div>
-  </header>
-
-  <main>
-    <div class="statusbar">
-      <span id="status">Starting…</span>
-      <span>Auto scan: <b>5 min</b></span>
-      <span>IST: <b>5:30 AM start</b></span>
-    </div>
-
-    <section class="panel">
-      <div class="panel-head">
-        <div>
-          <h2>SECTION 1 — 4H</h2>
-          <small>52 coins • only your 4H list</small>
-        </div>
-        <div class="legend"><span class="buy">BUY</span><span class="sell">SELL</span></div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Coin</th><th>4H Level</th><th>Sweep</th><th>Close</th><th>Signal</th><th>Signal Time</th><th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="table4h"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-head">
-        <div>
-          <h2>SECTION 2 — 1H</h2>
-          <small>18 coins • only your 1H list</small>
-        </div>
-        <div class="legend"><span class="buy">BUY</span><span class="sell">SELL</span></div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Coin</th><th>1H Level</th><th>Sweep</th><th>Close</th><th>Signal</th><th>Signal Time</th><th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="table1h"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="note">
-      <b>Logic:</b> Previous candle High ke upar current closed candle ka High jaye aur current candle previous High ke neeche close ho → <b>SELL</b>.
-      Previous candle Low ke neeche current closed candle ka Low jaye aur current candle previous Low ke upar close ho → <b>BUY</b>.
-      Sirf aapki lists scan hoti hain. Koi RSI divergence nahi hai.
-    </section>
-  </main>
-  <script src="/app.js"></script>
-</body>
-</html>
+<header><div><h1>CoinDCX Fakeout Scanner</h1><p>4H + 1H High/Low Sweep • केवल confirmed fakeout दिखेगा</p></div><div class="actions"><button id="scanBtn">SCAN NOW</button><span id="clock">--:--:--</span></div></header>
+<main>
+<div class="statusbar"><span id="status">Starting…</span><span>Manual scan only</span><span>4H confirmation: <b>15m</b></span><span>1H confirmation: <b>5m</b></span></div>
+<section class="panel"><div class="panel-head"><div><h2>SECTION 1 — 4H</h2><small>52 coins • सिर्फ latest completed 4H candle के बाद का fakeout</small></div><div class="legend"><span class="buy">BUY</span><span class="sell">SELL</span></div></div><div class="rule">Example: 05:30 → 09:30 4H candle complete. उसके बाद 15m candle High के ऊपर जाकर नीचे close करे = SELL; Low के नीचे जाकर ऊपर close करे = BUY.</div><div class="table-wrap"><table><thead><tr><th>Coin</th><th>4H Level</th><th>Sweep</th><th>Close</th><th>Confirm</th><th>Signal</th><th>Signal Time</th><th>Reference 4H</th></tr></thead><tbody id="table4h"></tbody></table></div></section>
+<section class="panel"><div class="panel-head"><div><h2>SECTION 2 — 1H</h2><small>18 coins • सिर्फ latest completed 1H candle के बाद का fakeout</small></div><div class="legend"><span class="buy">BUY</span><span class="sell">SELL</span></div></div><div class="rule">हर 1H close के बाद SCAN NOW दबाएँ. 5m candle High/Low sweep करके वापस level के अंदर close करे तभी coin दिखेगा.</div><div class="table-wrap"><table><thead><tr><th>Coin</th><th>1H Level</th><th>Sweep</th><th>Close</th><th>Confirm</th><th>Signal</th><th>Signal Time</th><th>Reference 1H</th></tr></thead><tbody id="table1h"></tbody></table></div></section>
+<div class="note"><b>अब पुराने signals नहीं दिखेंगे।</b> उदाहरण: 09:30 पर 4H candle complete होने के बाद 09:45/10:00 पर scan करने पर केवल उसी 4H level का बाद में बना confirmed fakeout दिखेगा। अगर किसी coin में fakeout नहीं बना है तो वह coin table में नहीं आएगा। इसी तरह 1H section में हर नए 1H close के बाद manual SCAN NOW करने पर सिर्फ बने हुए fakeout coins दिखेंगे। RSI divergence इसमें नहीं है.</div>
+</main><script src="/app.js"></script></body></html>

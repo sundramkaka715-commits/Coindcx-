@@ -7,80 +7,79 @@ const $ = id => document.getElementById(id);
 const fmt = n => Number.isFinite(Number(n)) ? Number(n).toLocaleString(undefined,{maximumFractionDigits:10}) : "-";
 const ist = ms => new Date(ms).toLocaleString("en-IN",{timeZone:"Asia/Kolkata",hour12:false,day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
-
-let instruments = [];
 let instrumentMap = new Map();
 
 async function loadInstruments(){
   const data = await fetch("/api/instruments").then(r=>r.json());
-  instruments = Array.isArray(data) ? data : [];
+  if(!Array.isArray(data)) throw new Error("CoinDCX instruments unavailable");
   instrumentMap = new Map();
-  for(const pair of instruments){
+  for(const pair of data){
     const base = pair.replace(/^.*?-/, "").split("_")[0].toUpperCase();
     if(!instrumentMap.has(base)) instrumentMap.set(base,pair);
   }
 }
 
-function renderRows(id,list,results){
+function renderRows(id, list, results, tf){
   const tbody=$(id); tbody.innerHTML="";
-  for(const symbol of list){
+  const rows = list.filter(s => results[s] && results[s].signal);
+  if(!rows.length){
+    tbody.innerHTML=`<tr><td colspan="8" class="empty">Is scan mein koi confirmed ${tf} fakeout nahi mila.</td></tr>`;
+    return;
+  }
+  for(const symbol of rows){
     const r=results[symbol];
+    const cls=r.signal==="BUY"?"signal-buy":"signal-sell";
+    const refStart=ist(r.referenceStart), refEnd=ist(r.referenceEnd);
     const tr=document.createElement("tr");
-    if(!r){
-      tr.innerHTML=`<td>${symbol}</td><td colspan="6" class="muted">Waiting…</td>`;
-    }else if(r.error){
-      tr.innerHTML=`<td>${symbol}</td><td colspan="6" class="missing">${r.error}</td>`;
-    }else if(!r.signal){
-      tr.innerHTML=`<td>${symbol}</td><td>${r.levelType||"-"}</td><td>${fmt(r.sweep)}</td><td>${fmt(r.close)}</td><td class="muted">NO SIGNAL</td><td>-</td><td class="status-ok">Scanned</td>`;
-    }else{
-      const cls=r.signal==="BUY"?"signal-buy":"signal-sell";
-      tr.innerHTML=`<td>${symbol}</td><td>${r.levelType} ${fmt(r.level)}</td><td>${fmt(r.sweep)}</td><td>${fmt(r.close)}</td><td class="${cls}">${r.signal}</td><td>${ist(r.time)}</td><td class="${cls}">CONFIRMED</td>`;
-    }
+    tr.innerHTML=`<td>${symbol}</td><td>${r.levelType} ${fmt(r.level)}</td><td>${fmt(r.sweep)}</td><td>${fmt(r.close)}</td><td>${r.confirmTf}</td><td class="${cls}">${r.signal}</td><td>${ist(r.signalTime)}</td><td>${refStart} → ${refEnd}</td>`;
     tbody.appendChild(tr);
   }
 }
 
 function aggregate4h(candles){
-  // CoinDCX futures REST exposes 1H candles. Group them into native UTC 4H blocks.
+  // 4H blocks are aligned to UTC 00/04/08/12/16/20, which is 05:30/09:30/13:30/17:30/21:30 IST.
   const sorted=candles.map(c=>({open:+c.open,high:+c.high,low:+c.low,close:+c.close,time:+c.time})).sort((a,b)=>a.time-b.time);
   const groups=new Map();
   for(const c of sorted){
     const d=new Date(c.time);
     const start=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate(),Math.floor(d.getUTCHours()/4)*4,0,0,0);
-    const key=start;
-    if(!groups.has(key)) groups.set(key,[]);
-    groups.get(key).push(c);
+    if(!groups.has(start)) groups.set(start,[]);
+    groups.get(start).push(c);
   }
   const out=[];
   for(const [time,g] of groups){
     if(g.length<4) continue;
-    out.push({open:g[0].open,high:Math.max(...g.map(x=>x.high)),low:Math.min(...g.map(x=>x.low)),close:g[g.length-1].close,time});
+    out.push({open:g[0].open,high:Math.max(...g.map(x=>x.high)),low:Math.min(...g.map(x=>x.low)),close:g[g.length-1].close,time, end:time+4*3600000});
   }
   return out;
 }
 
-function findLatestSignal(candles){
-  if(candles.length<2) return null;
-  const sorted=candles.slice().sort((a,b)=>a.time-b.time);
-  // Use only fully closed candles. We fetch historical data and deliberately exclude the latest
-  // candle when its time is still inside the current period.
-  const now=Date.now();
-  const period=sorted.length>1 ? Math.max(60000, sorted[sorted.length-1].time - sorted[sorted.length-2].time) : 3600000;
-  const closed=sorted.filter(c=>c.time+period<=now+5000);
-  if(closed.length<2) return null;
+function isClosed(c, durationMs){ return c.time + durationMs <= Date.now()+5000; }
 
+function latestCompleted(candles, durationMs){
+  const sorted=candles.slice().sort((a,b)=>a.time-b.time);
+  const closed=sorted.filter(c=>isClosed(c,durationMs));
+  return closed.length ? closed[closed.length-1] : null;
+}
+
+function findFakeout(reference, confirmationCandles, confirmMs, confirmTf){
+  if(!reference) return null;
+  const after=confirmationCandles.slice().sort((a,b)=>a.time-b.time).filter(c=>
+    c.time >= reference.end && isClosed(c,confirmMs)
+  );
   let latest=null;
-  for(let i=1;i<closed.length;i++){
-    const prev=closed[i-1], cur=closed[i];
-    if(cur.high>prev.high && cur.close<prev.high){
-      latest={signal:"SELL",levelType:"HIGH",level:prev.high,sweep:cur.high,close:cur.close,time:cur.time};
+  for(const c of after){
+    // Bearish fakeout: sweep above reference high, then close back below it.
+    if(c.high > reference.high && c.close < reference.high){
+      latest={signal:"SELL",levelType:"HIGH",level:reference.high,sweep:c.high,close:c.close,signalTime:c.time,confirmTf,referenceStart:reference.time,referenceEnd:reference.end};
     }
-    if(cur.low<prev.low && cur.close>prev.low){
-      const candidate={signal:"BUY",levelType:"LOW",level:prev.low,sweep:cur.low,close:cur.close,time:cur.time};
-      if(!latest || candidate.time>=latest.time) latest=candidate;
+    // Bullish fakeout: sweep below reference low, then close back above it.
+    if(c.low < reference.low && c.close > reference.low){
+      const candidate={signal:"BUY",levelType:"LOW",level:reference.low,sweep:c.low,close:c.close,signalTime:c.time,confirmTf,referenceStart:reference.time,referenceEnd:reference.end};
+      if(!latest || candidate.signalTime>=latest.signalTime) latest=candidate;
     }
   }
-  return latest || {levelType:"Previous",level:closed[closed.length-2].close,sweep:closed[closed.length-1].close,close:closed[closed.length-1].close};
+  return latest;
 }
 
 async function getCandles(pair,resolution,hoursBack){
@@ -93,50 +92,52 @@ async function getCandles(pair,resolution,hoursBack){
   throw new Error("No candle data");
 }
 
-async function scanList(list, timeframe){
+async function scanOne(symbol,timeframe){
+  const pair=instrumentMap.get(symbol.toUpperCase());
+  if(!pair) return {error:"CoinDCX futures pair not found"};
+  if(timeframe==="4H"){
+    const hourly=await getCandles(pair,"60",24*8);
+    const refs=aggregate4h(hourly);
+    if(refs.length<1) return null;
+    const reference=refs[refs.length-1];
+    // 15m confirmation after the just-completed 4H candle.
+    const confirm=await getCandles(pair,"15",24*2);
+    return findFakeout(reference,confirm,15*60000,"15m");
+  }
+  // 1H reference + 5m confirmation after the just-completed 1H candle.
+  const hourly=await getCandles(pair,"60",24*4);
+  const hSorted=hourly.map(c=>({open:+c.open,high:+c.high,low:+c.low,close:+c.close,time:+c.time,end:+c.time+3600000})).sort((a,b)=>a.time-b.time);
+  const reference=latestCompleted(hSorted,3600000);
+  const confirm=await getCandles(pair,"5",24);
+  return findFakeout(reference,confirm,5*60000,"5m");
+}
+
+async function scanList(list,timeframe){
   const out={};
   for(const symbol of list){
-    const pair=instrumentMap.get(symbol.toUpperCase());
-    if(!pair){
-      out[symbol]={error:"CoinDCX futures pair not found"};
-      continue;
-    }
-    try{
-      const raw=await getCandles(pair,"60",timeframe==="4H"?24*10:24*5);
-      const candles=timeframe==="4H"?aggregate4h(raw):raw;
-      out[symbol]=findLatestSignal(candles);
-      if(out[symbol]) out[symbol].pair=pair;
-    }catch(e){
-      out[symbol]={error:"Data error"};
-    }
-    // Keep requests gentle on the public API.
-    await sleep(80);
+    try{ out[symbol]=await scanOne(symbol,timeframe); }
+    catch(e){ out[symbol]={error:"Data error"}; }
+    await sleep(70);
   }
   return out;
 }
 
 async function scan(){
-  $("status").textContent="Scanning CoinDCX…";
+  $("status").textContent="Scanning… sirf naye/current fakeout signals dikhaye ja rahe hain.";
   $("scanBtn").disabled=true;
   try{
     await loadInstruments();
     const [r4,r1]=await Promise.all([scanList(FOUR_H,"4H"),scanList(ONE_H,"1H")]);
-    renderRows("table4h",FOUR_H,r4);
-    renderRows("table1h",ONE_H,r1);
+    renderRows("table4h",FOUR_H,r4,"4H");
+    renderRows("table1h",ONE_H,r1,"1H");
     const found4=Object.values(r4).filter(x=>x&&x.signal).length;
     const found1=Object.values(r1).filter(x=>x&&x.signal).length;
-    $("status").innerHTML=`Last scan: <b>${ist(Date.now())} IST</b> • 4H signals: <b>${found4}</b> • 1H signals: <b>${found1}</b>`;
-  }catch(e){
-    $("status").textContent="Scanner error: "+e.message;
-  }finally{
-    $("scanBtn").disabled=false;
-  }
+    $("status").innerHTML=`Scan complete: <b>${ist(Date.now())} IST</b> • 4H fakeouts: <b>${found4}</b> • 1H fakeouts: <b>${found1}</b>`;
+  }catch(e){ $("status").textContent="Scanner error: "+e.message; }
+  finally{ $("scanBtn").disabled=false; }
 }
-
-function clock(){
-  $("clock").textContent=new Date().toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour12:false})+" IST";
-}
+function clock(){ $("clock").textContent=new Date().toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata",hour12:false})+" IST"; }
 $("scanBtn").addEventListener("click",scan);
 setInterval(clock,1000); clock();
+// No automatic scanning. User clicks SCAN NOW at 09:45/10:00, then after each 1H close as desired.
 scan();
-setInterval(scan,5*60*1000);
