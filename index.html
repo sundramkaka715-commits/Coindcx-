@@ -1,1 +1,61 @@
-
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CoinDCX Pre-Break RSI Scanner</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#131b2f;--muted:#9aa8c8;--line:#293653;--green:#31d6a0;--red:#ff667e;--yellow:#ffd166;--blue:#7faaff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#edf2ff;font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{padding:22px 18px;background:linear-gradient(120deg,#172747,#10172b);border-bottom:1px solid var(--line)}
+h1{margin:0 0 5px;font-size:22px}p{margin:5px 0;color:var(--muted)}main{max-width:1250px;margin:auto;padding:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:15px;margin-bottom:14px}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;align-items:end}
+label{display:block;color:var(--muted);font-size:12px;margin-bottom:5px}select,input,button{width:100%;padding:10px;border-radius:9px;border:1px solid var(--line);background:#0c1427;color:#edf2ff}
+button{cursor:pointer;background:#2563eb;border:0;font-weight:700}button.secondary{background:#24314e}button:disabled{opacity:.55;cursor:wait}
+.check{display:flex;gap:8px;align-items:center;color:#d8e0f7}.check input{width:auto}
+.status{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 9px;color:var(--muted);font-size:12px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{background:#0d1528;border:1px solid var(--line);padding:12px;border-radius:10px}.stat b{display:block;font-size:22px}
+.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:900px}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:600;font-size:12px}
+.tag{display:inline-block;padding:3px 7px;border-radius:6px;font-size:11px;font-weight:800}.watch{background:#46391b;color:var(--yellow)}.setup{background:#243d70;color:#a9c7ff}.confirmed{background:#123f35;color:#7bf0c7}.bull{color:var(--green)}.bear{color:var(--red)}
+#log{white-space:pre-wrap;color:var(--muted);font-size:12px;max-height:150px;overflow:auto}
+footer{max-width:1250px;margin:auto;padding:0 16px 25px;color:var(--muted);font-size:12px}
+@media(max-width:600px){h1{font-size:19px}main{padding:10px}.panel{padding:12px}}
+</style>
+</head>
+<body>
+<header><h1>CoinDCX Pre-Break RSI Scanner</h1><p>1H liquidity sweep + 3M/5M RSI divergence + early warning + swing-break confirmation</p></header>
+<main>
+<section class="panel">
+ <div class="controls">
+  <div><label for="direction">Signal direction</label><select id="direction"><option value="both">Bullish + Bearish</option><option value="bear">Bearish / Short setup</option><option value="bull">Bullish / Long setup</option></select></div>
+  <div><label for="tf">Divergence timeframe</label><select id="tf"><option value="both">3M + 5M</option><option value="3">3M only</option><option value="5">5M only</option></select></div>
+  <div><label for="poll">Auto scan interval</label><select id="poll"><option value="0">Manual only</option><option value="1">Every 1 minute</option><option value="3">Every 3 minutes</option><option value="5" selected>Every 5 minutes</option></select></div>
+  <div><label>&nbsp;</label><button id="scan">Scan now</button></div>
+  <div><label>&nbsp;</label><button id="stop" class="secondary">Stop auto scan</button></div>
+ </div>
+ <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:13px">
+  <label class="check"><input id="vol" type="checkbox" checked> RVol filter</label>
+  <label class="check"><input id="btc" type="checkbox" checked> BTC trend context</label>
+  <label class="check"><input id="early" type="checkbox" checked> Show pre-break setups</label>
+ </div>
+</section>
+<section class="panel status"><div><b id="state">Ready to scan</b><p id="last">No scan run yet.</p></div><span class="pill">18-coin watchlist · Public market data only · No API keys</span></section>
+<section class="panel cards">
+ <div class="stat"><span class="pill">Coins checked</span><b id="nchecked">0</b></div>
+ <div class="stat"><span class="pill">Early setups</span><b id="nsetup">0</b></div>
+ <div class="stat"><span class="pill">Break confirmations</span><b id="nconfirm">0</b></div>
+ <div class="stat"><span class="pill">Data errors</span><b id="nerrors">0</b></div>
+</section>
+<section class="panel"><h3 style="margin-top:0">Signals</h3><p>Early setup alerts are not guaranteed reversals. “Confirmed” means the latest closed lower-timeframe candle broke the recent swing level.</p>
+<div class="tablewrap"><table><thead><tr><th>Coin</th><th>Stage</th><th>Side</th><th>Reason</th><th>1H sweep level</th><th>RSI / TF</th><th>Entry reference</th><th>Invalidation</th></tr></thead><tbody id="results"><tr><td colspan="8">Click “Scan now” to start.</td></tr></tbody></table></div></section>
+<section class="panel"><h3 style="margin-top:0">Scan log</h3><div id="log">Waiting for scan…</div></section>
+</main>
+<footer>
+<p><b>Important:</b> This is a signal scanner, not an auto-trader. It uses public CoinDCX candle data in the browser. Browser CORS restrictions or API changes can prevent data loading. Check signals against the exchange chart before trading. No orders are placed.</p>
+<p>Watchlist used in this ZIP: BTC, ETH, SOL, XRP, DOGE, ADA, BNB, AVAX, LINK, DOT, LTC, BCH, TRX, NEAR, SUI, APT, UNI, ZEC. If your earlier list differs, edit the WATCHLIST in <code>public/app.js</code>.</p>
+</footer>
+<script src="./public/app.js"></script>
+</body></html>

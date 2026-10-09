@@ -1,1 +1,10 @@
-
+{
+  "name": "coindcx-prebreak-rsi-scanner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CoinDCX public-candle RSI divergence pre-break scanner",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve ."
+  }
+}
