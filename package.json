@@ -1,10 +1,8 @@
 {
-  "name": "coindcx-prebreak-rsi-scanner",
-  "version": "1.0.0",
+  "name": "coindcx-hourly-sweep-rsi-scanner",
+  "version": "2.0.0",
   "private": true,
-  "description": "CoinDCX public-candle RSI divergence pre-break scanner",
-  "scripts": {
-    "start": "npx serve .",
-    "dev": "npx serve ."
-  }
+  "description": "CoinDCX futures 1H liquidity sweep plus 3M/5M RSI divergence scanner with same-origin candle proxy",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" }
 }
