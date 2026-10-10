@@ -54,7 +54,7 @@ footer{max-width:1250px;margin:auto;padding:0 16px 25px;color:var(--muted);font-
 <section class="panel"><h3 style="margin-top:0">Scan log</h3><div id="log">Waiting for scan…</div></section>
 </main>
 <footer>
-<p><b>Important:</b> This is a signal scanner, not an auto-trader. It uses public CoinDCX candle data in the browser. Browser CORS restrictions or API changes can prevent data loading. Check signals against the exchange chart before trading. No orders are placed.</p>
+<p><b>Important:</b> This is a signal scanner, not an auto-trader. It fetches public CoinDCX futures candles through this website’s server proxy to avoid browser CORS errors. Temporary API outages/rate limits can still affect data. Check signals against the exchange chart before trading. No orders are placed.</p>
 <p>Watchlist used in this ZIP: BTC, ETH, SOL, XRP, DOGE, ADA, BNB, AVAX, LINK, DOT, LTC, BCH, TRX, NEAR, SUI, APT, UNI, ZEC. If your earlier list differs, edit the WATCHLIST in <code>public/app.js</code>.</p>
 </footer>
 <script src="./app.js"></script>

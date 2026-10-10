@@ -1,143 +1,37 @@
 (() => {
-"use strict";
-// 18-coin watchlist included in this ZIP.
-const WATCHLIST = [
- "B-BTC_USDT","B-ETH_USDT","B-SOL_USDT","B-XRP_USDT","B-DOGE_USDT","B-ADA_USDT",
- "B-BNB_USDT","B-AVAX_USDT","B-LINK_USDT","B-DOT_USDT","B-LTC_USDT","B-BCH_USDT",
- "B-TRX_USDT","B-NEAR_USDT","B-SUI_USDT","B-APT_USDT","B-UNI_USDT","B-ZEC_USDT"
-];
-const $ = id => document.getElementById(id);
-let timer = null, busy = false;
-const log = msg => { $("log").textContent = `[${new Date().toLocaleTimeString()}] ${msg}\n` + $("log").textContent; };
-const num = v => { const n=Number(v); return Number.isFinite(n)?n:null; };
-function normalizeCandle(c) {
- if(Array.isArray(c)) return {time:num(c[0]),open:num(c[1]),high:num(c[2]),low:num(c[3]),close:num(c[4]),volume:num(c[5]??0)};
- return {time:num(c.time??c.t??c.timestamp),open:num(c.open??c.o),high:num(c.high??c.h),low:num(c.low??c.l),close:num(c.close??c.c),volume:num(c.volume??c.v??0)};
-}
-async function getCandles(pair, interval, limit=220) {
- const end=Date.now(), start=end- Math.max(limit*60*1000, 36*60*60*1000);
- const url=`https://public.coindcx.com/market_data/candles?pair=${encodeURIComponent(pair)}&interval=${interval}&startTime=${start}&endTime=${end}`;
- const res=await fetch(url,{cache:"no-store"});
- if(!res.ok) throw new Error(`${pair} ${interval}: HTTP ${res.status}`);
- const raw=await res.json(), arr=Array.isArray(raw)?raw:(raw.data||raw.candles||[]);
- const out=arr.map(normalizeCandle).filter(c=>c.time!==null&&c.open!==null&&c.high!==null&&c.low!==null&&c.close!==null);
- out.forEach(c=>{if(c.time<1e12)c.time*=1000});
- out.sort((a,b)=>a.time-b.time);
- return out.slice(-limit);
-}
-function rsi(data, period=14) {
- if(data.length<=period)return [];
- const out=Array(data.length).fill(null); let gain=0,loss=0;
- for(let i=1;i<=period;i++){const d=data[i].close-data[i-1].close;gain+=Math.max(0,d);loss+=Math.max(0,-d)}
- let ag=gain/period,al=loss/period;out[period]=al===0?100:100-100/(1+ag/al);
- for(let i=period+1;i<data.length;i++){const d=data[i].close-data[i-1].close;ag=(ag*(period-1)+Math.max(0,d))/period;al=(al*(period-1)+Math.max(0,-d))/period;out[i]=al===0?100:100-100/(1+ag/al)}
- return out;
-}
-function pivots(data, type, left=2, right=2) {
- const out=[];
- for(let i=left;i<data.length-right;i++){const v=type==="high"?data[i].high:data[i].low;let ok=true;
-  for(let j=i-left;j<=i+right;j++){if(j===i)continue;const z=type==="high"?data[j].high:data[j].low;if(type==="high"?z>v:z<v){ok=false;break}}
-  if(ok)out.push(i);
- }
- return out;
-}
-function getDivergence(data) {
- if(data.length<35)return null;
- const rs=rsi(data), hs=pivots(data,"high"), ls=pivots(data,"low");
- if(hs.length>=2){const a=hs[hs.length-2],b=hs[hs.length-1];
-  if(data[b].high>data[a].high && rs[b]!==null&&rs[a]!==null&&rs[b]<rs[a]-1.5 && b>=data.length-10)
-   return {side:"bear",a,b,rsi:rs[b],reason:"Price higher high, RSI lower high"};
- }
- if(ls.length>=2){const a=ls[ls.length-2],b=ls[ls.length-1];
-  if(data[b].low<data[a].low && rs[b]!==null&&rs[a]!==null&&rs[b]>rs[a]+1.5 && b>=data.length-10)
-   return {side:"bull",a,b,rsi:rs[b],reason:"Price lower low, RSI higher low"};
- }
- return null;
-}
-function volumeOK(data) {
- if(data.length<22)return true;
- const recent=data[data.length-2].volume||0, prev=data.slice(-22,-2).map(c=>c.volume||0);
- const avg=prev.reduce((a,b)=>a+b,0)/Math.max(1,prev.length);
- return avg===0 || recent>=avg*0.8;
-}
-function analyze(pair, h1, lowTf, tfLabel, useVol, direction) {
- if(h1.length<3||lowTf.length<40)return null;
- // Use most recent completed hourly candle as the level candle.
- const levelCandle=h1[h1.length-2], currentH=h1[h1.length-1];
- const last=lowTf[lowTf.length-2]; // completed lower-timeframe candle
- const prior=lowTf.slice(-10,-2);
- const div=getDivergence(lowTf);
- if(!div || (direction!=="both"&&direction!==div.side))return null;
- if(useVol&&!volumeOK(lowTf))return null;
- const price=last.close, sweepHigh=lowTf.slice(-12,-1).some(c=>c.high>levelCandle.high);
- const sweepLow=lowTf.slice(-12,-1).some(c=>c.low<levelCandle.low);
- let stage=null, level=null, invalid=null, entry=null, reason=div.reason;
- if(div.side==="bear") {
-  level=levelCandle.high; invalid=Math.max(...lowTf.slice(-8,-1).map(c=>c.high));
-  const swept=sweepHigh || currentH.high>levelCandle.high;
-  const rejected=price<levelCandle.high;
-  const swingLow=Math.min(...prior.map(c=>c.low));
-  const broke=price<swingLow;
-  if(!swept||!rejected)return null;
-  stage=broke?"CONFIRMED BREAK":"PRE-BREAK SETUP";
-  entry=price; reason += "; 1H high swept/rejected" + (broke?"; recent swing low close broken":"; swing low not yet broken");
- } else {
-  level=levelCandle.low; invalid=Math.min(...lowTf.slice(-8,-1).map(c=>c.low));
-  const swept=sweepLow || currentH.low<levelCandle.low;
-  const reclaimed=price>levelCandle.low;
-  const swingHigh=Math.max(...prior.map(c=>c.high));
-  const broke=price>swingHigh;
-  if(!swept||!reclaimed)return null;
-  stage=broke?"CONFIRMED BREAK":"PRE-BREAK SETUP";
-  entry=price; reason += "; 1H low swept/reclaimed" + (broke?"; recent swing high close broken":"; swing high not yet broken");
- }
- return {pair,stage,side:div.side,reason,level,rsi:div.rsi,tf:tfLabel,entry,invalid,time:last.time};
-}
-function fmt(n){return n==null?"—":Number(n).toLocaleString("en-US",{maximumFractionDigits:8})}
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function render(rows, checked, errors) {
- const shown=rows.filter(r=>r.stage==="CONFIRMED BREAK"||$("early").checked);
- $("nchecked").textContent=checked;$("nsetup").textContent=rows.filter(r=>r.stage==="PRE-BREAK SETUP").length;
- $("nconfirm").textContent=rows.filter(r=>r.stage==="CONFIRMED BREAK").length;$("nerrors").textContent=errors;
- $("results").innerHTML=shown.length?shown.sort((a,b)=>(a.stage==="CONFIRMED BREAK"?-1:1)).map(r=>`<tr>
- <td><b>${escapeHtml(r.pair.replace(/^B-/,"").replace("_USDT","/USDT"))}</b><small>${new Date(r.time).toLocaleTimeString()}</small></td>
- <td><span class="tag ${r.stage==="CONFIRMED BREAK"?"confirmed":"setup"}">${r.stage}</span></td>
- <td class="${r.side}">${r.side==="bear"?"BEARISH / SHORT":"BULLISH / LONG"}</td>
- <td>${escapeHtml(r.reason)}</td><td>${fmt(r.level)}</td><td>${r.rsi.toFixed(1)} / ${r.tf}</td><td>${fmt(r.entry)}</td><td>${fmt(r.invalid)}</td></tr>`).join(""):'<tr><td colspan="8">No matching setup found in this scan.</td></tr>';
-}
-async function scan() {
- if(busy)return;busy=true;$("scan").disabled=true;$("state").textContent="Scanning 18 coins…";
- const direction=$("direction").value, tf=$("tf").value, useVol=$("vol").checked;
- let checked=0, errors=0, rows=[];
- const chosen=tf==="both"?["3m","5m"]:[tf==="3"?"3m":"5m"];
- for(const pair of WATCHLIST) {
-  try {
-   const h1=await getCandles(pair,"1h",100);
-   for(const interval of chosen) {
-    try {
-     const low=await getCandles(pair,interval,180);
-     const r=analyze(pair,h1,low,interval.toUpperCase(),useVol,direction);
-     if(r && !rows.some(x=>x.pair===r.pair&&x.side===r.side&&x.stage===r.stage))rows.push(r);
-    } catch(e){errors++;log(e.message)}
-    await new Promise(r=>setTimeout(r,80));
-   }
-   checked++;
-  } catch(e){errors++;log(e.message)}
-  $("nchecked").textContent=checked;
- }
- render(rows,checked,errors);
- $("state").textContent=rows.length?`${rows.length} setup(s) found`:"Scan complete — no matching setup";
- $("last").textContent=`Last scan: ${new Date().toLocaleString()} · ${checked} coins checked`;
- log(`Scan complete: ${checked} checked, ${rows.length} signals, ${errors} data errors.`);
- $("scan").disabled=false;busy=false;
-}
-function restartTimer(){
- if(timer){clearInterval(timer);timer=null}
- const mins=Number($("poll").value);
- if(mins>0){timer=setInterval(scan,mins*60000);log(`Auto scan enabled: every ${mins} minute(s).`)}
-}
-$("scan").addEventListener("click",scan);
-$("poll").addEventListener("change",restartTimer);
-$("stop").addEventListener("click",()=>{if(timer)clearInterval(timer);timer=null;$("poll").value="0";log("Auto scan stopped.")});
-restartTimer();
+'use strict';
+const WATCHLIST=['B-BTC_USDT','B-ETH_USDT','B-SOL_USDT','B-XRP_USDT','B-DOGE_USDT','B-ADA_USDT','B-BNB_USDT','B-AVAX_USDT','B-LINK_USDT','B-DOT_USDT','B-LTC_USDT','B-BCH_USDT','B-TRX_USDT','B-NEAR_USDT','B-SUI_USDT','B-APT_USDT','B-UNI_USDT','B-ZEC_USDT'];
+const $=id=>document.getElementById(id); let timer=null,busy=false;
+const log=msg=>{$('log').textContent=`[${new Date().toLocaleTimeString()}] ${msg}\n`+$('log').textContent;};
+const fmt=v=>Number.isFinite(v)?v.toLocaleString('en-US',{maximumFractionDigits:8}):'—';
+function normalize(c){return {...c,time:Number(c.time),open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close),volume:Number(c.volume||0)}}
+function aggregate3(one){const map=new Map();for(const raw of one){const c=normalize(raw),key=Math.floor(c.time/180000)*180000;let b=map.get(key);if(!b)map.set(key,{time:key,open:c.open,high:c.high,low:c.low,close:c.close,volume:c.volume,n:1});else{b.high=Math.max(b.high,c.high);b.low=Math.min(b.low,c.low);b.close=c.close;b.volume+=c.volume;b.n++;}}return [...map.values()].filter(x=>x.n>=2).sort((a,b)=>a.time-b.time).map(({n,...c})=>c)}
+function rsi(data,period=14){if(data.length<=period)return[];const out=Array(data.length).fill(null);let g=0,l=0;for(let i=1;i<=period;i++){const d=data[i].close-data[i-1].close;g+=Math.max(d,0);l+=Math.max(-d,0)}let ag=g/period,al=l/period;out[period]=al===0?100:100-100/(1+ag/al);for(let i=period+1;i<data.length;i++){const d=data[i].close-data[i-1].close;ag=(ag*(period-1)+Math.max(d,0))/period;al=(al*(period-1)+Math.max(-d,0))/period;out[i]=al===0?100:100-100/(1+ag/al)}return out}
+function pivots(data,type,left=2,right=2){const out=[];for(let i=left;i<data.length-right;i++){const v=data[i][type];let ok=true;for(let j=i-left;j<=i+right;j++){if(i===j)continue;const z=data[j][type];if(type==='high'?z>v:z<v){ok=false;break}}if(ok)out.push(i)}return out}
+function divergence(data){if(data.length<35)return null;const rs=rsi(data),hs=pivots(data,'high'),ls=pivots(data,'low'),last=data.length-1;const recent=(p)=>p.filter(i=>i>=Math.max(0,last-22)&&i<=last-2);
+ const rh=recent(hs);if(rh.length>=2){const a=rh[rh.length-2],b=rh[rh.length-1];if(data[b].high>data[a].high&&rs[a]!=null&&rs[b]!=null&&rs[b]<rs[a]-1.5)return{side:'bear',a,b,rsi:rs[b],reason:'Price higher high, RSI lower high'}}
+ const rl=recent(ls);if(rl.length>=2){const a=rl[rl.length-2],b=rl[rl.length-1];if(data[b].low<data[a].low&&rs[a]!=null&&rs[b]!=null&&rs[b]>rs[a]+1.5)return{side:'bull',a,b,rsi:rs[b],reason:'Price lower low, RSI higher low'}}return null}
+function sweep(hour){if(hour.length<3)return null;const prev=hour[hour.length-2],cur=hour[hour.length-1];
+ // Only count a candle that actually crossed the previous completed hour's level and returned inside it.
+ if(cur.low<prev.low&&cur.close>prev.low)return{side:'bull',level:prev.low,candle:cur,previous:prev};
+ if(cur.high>prev.high&&cur.close<prev.high)return{side:'bear',level:prev.high,candle:cur,previous:prev};return null}
+function volumeOK(data){if(data.length<22)return true;const last=data[data.length-1].volume||0,prev=data.slice(-21,-1).map(c=>c.volume||0),avg=prev.reduce((a,b)=>a+b,0)/prev.length;return avg===0||last>=avg*.65}
+function analyze(pair,raw){const hour=raw.hour.map(normalize),one=raw.one.map(normalize),five=raw.five.map(normalize),three=aggregate3(one);const sw=sweep(hour);if(!sw)return null;const choices=[];if($('tf').value!=='5')choices.push({tf:'3M',data:three});if($('tf').value!=='3')choices.push({tf:'5M',data:five});
+ for(const item of choices){const data=item.data;if(data.length<35)continue;const d=divergence(data);if(!d||d.side!==sw.side)continue;if(data[data.length-1].time < Date.now()-75*60*1000)continue;if($('vol').checked&&!volumeOK(data))continue;
+  if($('btc').checked&&pair!=='B-BTC_USDT'){const btc=window.__btcContext;if(btc&&((sw.side==='bull'&&btc<-.9)||(sw.side==='bear'&&btc>.9)))continue;}
+  const last=data[data.length-1],post=data.slice(d.b+1,-1).slice(-8);let trigger,broken=false;
+  if(sw.side==='bull'){trigger=post.length?Math.max(...post.map(c=>c.high)):data[d.b].high;broken=last.close>trigger;}
+  else{trigger=post.length?Math.min(...post.map(c=>c.low)):data[d.b].low;broken=last.close<trigger;}
+  // Trigger is based on candles before the latest candle, so a fresh close can confirm the break.
+  if(!Number.isFinite(trigger))trigger=sw.side==='bull'?data[d.b].high:data[d.b].low;
+  return{pair,side:sw.side,stage:broken?'confirmed':'setup',reason:`1H ${sw.side==='bull'?'low':'high'} sweep + ${d.reason}`,level:sw.level,rsi:d.rsi,tf:item.tf,entry:trigger,invalidation:sw.side==='bull'?Math.min(sw.level,data[d.b].low):Math.max(sw.level,data[d.b].high),time:last.time};
+ }return null}
+function coin(pair){return pair.replace(/^B-/,'').replace('_USDT','')}
+function render(rows){$('results').innerHTML='';if(!rows.length){$('results').innerHTML='<tr><td colspan="8">No matching setup found in this scan. No coins are shown unless the 1H sweep and matching RSI divergence both exist.</td></tr>';return}for(const s of rows){const tr=document.createElement('tr');tr.innerHTML=`<td><b>${coin(s.pair)}</b></td><td><span class="tag ${s.stage==='confirmed'?'confirmed':'setup'}">${s.stage==='confirmed'?'BREAK CONFIRMED':'EARLY / PRE-BREAK'}</span></td><td class="${s.side}"><b>${s.side==='bull'?'BULLISH':'BEARISH'}</b></td><td>${s.reason}</td><td>${fmt(s.level)}</td><td>${s.tf} · RSI ${fmt(s.rsi)}</td><td>${fmt(s.entry)}</td><td>${fmt(s.invalidation)}</td>`;$('results').appendChild(tr)}}
+async function getData(pair){const r=await fetch(`/api/candles?pair=${encodeURIComponent(pair)}`,{cache:'no-store'});const j=await r.json().catch(()=>({error:'Invalid server response'}));if(!r.ok)throw new Error(j.error||`HTTP ${r.status}`);return j}
+async function scan(){if(busy)return;busy=true;$('scan').disabled=true;$('state').textContent='Scanning latest 1H sweep + 3M/5M RSI divergence…';$('nchecked').textContent='0';$('nsetup').textContent='0';$('nconfirm').textContent='0';$('nerrors').textContent='0';const rows=[],errors=[];let checked=0;const queue=[...WATCHLIST];
+ async function worker(){while(queue.length){const pair=queue.shift();try{const data=await getData(pair);if(pair==='B-BTC_USDT'){const h=data.hour;window.__btcContext=h.length>1?((h[h.length-1].close/h[h.length-2].close)-1)*100:0;}const signal=analyze(pair,data);checked++;if(signal)rows.push(signal);log(`${coin(pair)}: ${signal?signal.stage+' '+signal.side:'no matching setup'}`)}catch(e){errors.push(`${coin(pair)}: ${e.message}`);log(`${coin(pair)} data error: ${e.message}`)}}}
+ try{await Promise.all([worker(),worker(),worker()]);rows.sort((a,b)=>(b.stage==='confirmed')-(a.stage==='confirmed')||a.pair.localeCompare(b.pair));render(rows);$('nchecked').textContent=checked;$('nsetup').textContent=rows.filter(x=>x.stage==='setup').length;$('nconfirm').textContent=rows.filter(x=>x.stage==='confirmed').length;$('nerrors').textContent=errors.length;$('state').textContent=errors.length?`Scan finished · ${rows.length} matching setup(s) · ${errors.length} data error(s)`:`Scan complete · ${rows.length} matching setup(s)`;$('last').textContent=`Last scan: ${new Date().toLocaleString()} · ${checked} coins checked · only matching setups shown` ;log(`Scan complete: ${checked} checked, ${rows.length} signals, ${errors.length} data errors.`)}finally{busy=false;$('scan').disabled=false}}
+$('scan').addEventListener('click',scan);$('stop').addEventListener('click',()=>{if(timer)clearInterval(timer);timer=null;$('poll').value='0';log('Auto scan stopped.')});$('poll').addEventListener('change',()=>{if(timer)clearInterval(timer);timer=null;const m=Number($('poll').value);if(m>0){timer=setInterval(scan,m*60000);log(`Auto scan enabled every ${m} minute(s).`)}else log('Manual scan mode enabled.')});
+$('state').textContent='Ready — click Scan now after the latest 1H candle completes';$('last').textContent='Only matching 1H liquidity sweep + 3M/5M RSI divergence will be listed.';
 })();
