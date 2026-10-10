@@ -1,1 +1,8 @@
-
+{
+  "name": "coindcx-hourly-sweep-rsi-scanner",
+  "version": "4.0.0",
+  "private": true,
+  "description": "CoinDCX futures scanner for completed 1H liquidity sweep plus 3M/5M RSI divergence",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" }
+}
